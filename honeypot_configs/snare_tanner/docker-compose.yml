@@ -1,0 +1,142 @@
+networks:
+  snare_tanner_network:
+
+services:
+
+  snare:
+    build:
+      context: ./snare
+      args:
+        PAGE_URL: www.saucedemo.com
+    container_name: snare_honeypot
+    restart: always
+    stop_signal: SIGKILL
+    tty: true
+    networks:
+     - snare_tanner_network
+    ports:
+     - "80:80"
+    image: snare_honeypot_local
+    environment:
+      - TANNER=tanner
+    depends_on:
+      tanner:
+        condition: service_healthy
+
+  tanner_redis:
+    build: ./tanner/docker/redis
+    container_name: tanner_redis
+    restart: always
+    stop_signal: SIGKILL
+    tty: true
+    networks:
+     - snare_tanner_network
+    image: tanner_redis_local
+    tmpfs:
+     - /data:uid=999,gid=999 # Allow Redis to write RDB files
+    read_only: true
+
+  tanner_phpox:
+    build: ./tanner/docker/phpox
+    container_name: tanner_phpox
+    restart: always
+    stop_signal: SIGKILL
+    tty: true
+    networks:
+     - snare_tanner_network
+    image: tanner_phpox_local
+    read_only: true
+    tmpfs: "/tmp"
+
+  tanner_api:
+    build:
+      context: ./tanner
+      dockerfile: docker/tanner/Dockerfile
+    environment:
+      - PATH=/opt/tanner/tanner-env/bin/:$PATH
+    container_name: tanner_api
+    restart: always
+    stop_signal: SIGKILL
+    tmpfs:
+     - /tmp/tanner:uid=65534,gid=65534
+     - /var/log/tanner:uid=65534,gid=65534
+    tty: true
+    networks:
+     - snare_tanner_network
+    image: tanner_api_local
+    ports:
+     - "8081:8092"
+    read_only: true
+    command: tannerapi
+    depends_on:
+     - tanner_redis
+
+  tanner_web:
+    build:
+      context: ./tanner
+      dockerfile: docker/tanner/Dockerfile
+    environment:
+      - PATH=/opt/tanner/tanner-env/bin/:$PATH
+    container_name: tanner_web
+    restart: always
+    stop_signal: SIGKILL
+    tmpfs:
+     - /tmp/tanner:uid=65534,gid=65534
+     - /var/log/tanner:uid=65534,gid=65534
+    tty: true
+    networks:
+     - snare_tanner_network
+    ports:
+     - "8091:8091"
+    image: tanner_web_local
+    command: tannerweb
+    read_only: true
+    depends_on:
+     - tanner_redis
+
+  ingestion_api:
+    build: ../../services/ingestion_api
+    container_name: ingestion_api
+    restart: always
+    networks:
+     - snare_tanner_network
+    ports:
+     - "8082:8000"
+    read_only: true
+    tmpfs:
+     - /tmp
+
+  tanner:
+    build:
+      context: ./tanner
+      dockerfile: docker/tanner/Dockerfile
+    environment:
+      - PATH=/opt/tanner/tanner-env/bin/:$PATH
+    container_name: tanner_service
+    restart: always
+    stop_signal: SIGKILL
+    tmpfs:
+     - /tmp/tanner:uid=65534,gid=65534
+     - /var/log/tanner:uid=65534,gid=65534
+     - /opt/tanner/files:uid=65534,gid=65534
+    tty: true
+    networks:
+     - snare_tanner_network
+    ports:
+     - "8090:8090"
+    image: tanner_local
+    command: tanner
+    read_only: true
+    depends_on:
+     - tanner_api
+     - tanner_web
+     - tanner_phpox
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://tanner:8090/version || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+volumes:
+  redis_data:
+  tanner_logs:

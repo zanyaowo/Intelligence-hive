@@ -1,0 +1,22 @@
+services:
+  honeypot-cowrie:
+    image: cowrie/cowrie:latest
+    container_name: honeypot_cowrie
+    restart: unless-stopped
+    ports:
+      - "2222:2222"
+      - "2424:2424"
+    environment:
+      - TZ=Asia/Taipei
+    volumes:
+      - cowrie_data:/cowrie/data
+      - ./userdb.txt:/cowrie/etc/userdb.txt
+    networks:
+      - honeypot_network
+
+volumes:
+  cowrie_data:
+
+networks:
+  honeypot_network:
+    driver: bridge
