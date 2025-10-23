@@ -10,7 +10,6 @@ This project includes and modifies open-source software components. Below is a l
 **License File**: `honeypot_configs/snare_tanner/snare/LICENSE`
 
 ### Modifications Made:
-- Removed Chinese language comments from source files
 - Modified Docker configuration for integration with data platform
 - Customized docker-compose.yml for deployment setup
 
@@ -24,10 +23,8 @@ This project includes and modifies open-source software components. Below is a l
 **License File**: `honeypot_configs/snare_tanner/tanner/LICENSE`
 
 ### Modifications Made:
-- **sessions_session.py**: Removed Chinese language comments from code
 - **docker-compose.yml**:
   - Changed healthcheck command from `curl` to `wget` for Alpine Linux compatibility
-  - Removed redundant Chinese comments
   - Modified port mappings for integration
 
 ---
