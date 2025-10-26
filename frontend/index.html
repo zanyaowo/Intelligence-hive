@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intelligence Hive - 监控仪表盘</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <h1>Intelligence Hive - 监控仪表盘</h1>
+    </header>
+    <main>
+        <section id="overview">
+            <h2>概览</h2>
+            <div class="grid-container">
+                <div class="card">
+                    <h3>总攻击次数</h3>
+                    <p id="total-attacks">0</p>
+                </div>
+                <div class="card">
+                    <h3>独立攻击源IP</h3>
+                    <p id="unique-ips">0</p>
+                </div>
+                <div class="card">
+                    <h3>最常见的攻击类型</h3>
+                    <p id="top-attack-type">-</p>
+                </div>
+            </div>
+        </section>
+        <section id="recent-events">
+            <h2>最近事件</h2>
+            <ul id="event-list">
+                <!-- Events will be dynamically inserted here -->
+            </ul>
+        </section>
+    </main>
+    <footer>
+        <p>&copy; 2025 Intelligence Hive</p>
+    </footer>
+    <script src="js/script.js"></script>
+</body>
+</html>
