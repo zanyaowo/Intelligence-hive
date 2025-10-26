@@ -50,33 +50,62 @@ def process_batch(messages: List[Tuple[bytes, Dict[bytes, bytes]]]) -> int:
     Returns:
         int: 處理成功的數量
     """
+    from normalizer import normalize_session, validate_session
+    from enricher import enrich_session
+    from evaluator import evaluate_session
+    from loader import save_session
+
     processed = 0
 
     for msg_id, msg_data in messages:
         try:
-            # 解析數據
+            # === 1. 解析資料 ===
             data_bytes = msg_data.get(b'data', b'{}')
             session = json.loads(data_bytes)
 
-            # TODO: 實際處理邏輯
-            # 1. normalize(session)
-            # 2. enrich(session)
-            # 3. evaluate(session)
-            # 4. save_to_db(session)
-
-            # 暫時只記錄
             sess_uuid = session.get('sess_uuid', 'unknown')
-            peer_ip = session.get('peer_ip', 'unknown')
-            attack_types = session.get('attack_types', [])
 
-            logging.debug(f"Processed session {sess_uuid} from {peer_ip}: {attack_types}")
-            processed += 1
+            # === 2. 正規化 ===
+            normalized_session = normalize_session(session)
 
-            # ACK 消息（標記為已處理）
-            redis_client.xack(REDIS_STREAM, CONSUMER_GROUP, msg_id)
+            # 驗證資料完整性
+            is_valid, error_msg = validate_session(normalized_session)
+            if not is_valid:
+                logging.warning(f"⚠️  Invalid session {sess_uuid}: {error_msg}")
+                # 仍然 ACK，但標記為無效
+                redis_client.xack(REDIS_STREAM, CONSUMER_GROUP, msg_id)
+                continue
+
+            # === 3. 豐富化 ===
+            enriched_session = enrich_session(normalized_session)
+
+            # === 4. 評估 ===
+            evaluated_session = evaluate_session(enriched_session)
+
+            # === 5. 保存 ===
+            saved = save_session(evaluated_session)
+
+            if saved:
+                # 記錄關鍵資訊
+                risk_score = evaluated_session.get('risk_score', 0)
+                threat_level = evaluated_session.get('threat_level', 'INFO')
+                alert_level = evaluated_session.get('alert_level', 'INFO')
+
+                logging.info(
+                    f"✅ Processed {sess_uuid} | Risk: {risk_score}/100 | "
+                    f"Threat: {threat_level} | Alert: {alert_level}"
+                )
+
+                processed += 1
+
+                # ACK 消息（標記為已處理）
+                redis_client.xack(REDIS_STREAM, CONSUMER_GROUP, msg_id)
+            else:
+                logging.error(f"❌ Failed to save session {sess_uuid}")
+                # 不 ACK，允許重試
 
         except Exception as e:
-            logging.error(f"Error processing message {msg_id}: {e}")
+            logging.error(f"❌ Error processing message {msg_id}: {e}", exc_info=True)
             # 不 ACK 失敗的消息，之後可以重試
 
     return processed
