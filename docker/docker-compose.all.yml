@@ -182,11 +182,30 @@ services:
       - REDIS_HOST=analytics_redis
       - REDIS_PORT=6379
       - REDIS_QUEUE=sessions_queue
+    volumes:
+      - analytics_data:/app/data
     depends_on:
       analytics_redis:
         condition: service_healthy
+
+  query_api:
+    build: ../services/query_api
+    container_name: query_api
+    restart: always
+    networks:
+      - analytics_network
+    ports:
+      - "8083:8083"
+    volumes:
+      - analytics_data:/app/data:ro  # 只讀掛載，不需要寫入權限
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 volumes:
   redis_data:
   tanner_logs:
   analytics_redis_data:
+  analytics_data:
