@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 """
 資料豐富化模組
 
@@ -243,52 +242,106 @@ def analyze_request_patterns(session: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def analyze_payloads(session: Dict[str, Any]) -> Dict[str, Any]:
-    """分析 payload 內容"""
+    """
+    Payload 統計分析（補充 Tanner 的結果）
+
+    專注於統計特徵，不重複攻擊檢測：
+    1. 統計 payload 長度特徵
+    2. 檢測編碼方式（URL編碼、Base64、Hex等）
+    3. 評估 payload 複雜度
+    """
     analysis = {
-        'has_sql_keywords': False,
-        'has_xss_patterns': False,
-        'has_command_injection': False,
-        'has_path_traversal': False,
+        'total_payload_length': 0,
+        'longest_payload': 0,
+        'avg_payload_length': 0,
         'has_encoded_content': False,
-        'suspicious_patterns': []
+        'encoding_detected': [],
+        'payload_complexity': 'low'
     }
 
     paths = session.get('paths', [])
 
+    if not paths:
+        return analysis
+
+    # 收集所有 payload 內容
+    payloads = []
     for path in paths:
-        path_str = path.get('path', '').lower()
-        post_data = str(path.get('post_data', '')).lower()
-        combined = path_str + ' ' + post_data
+        if not isinstance(path, dict):
+            continue
 
-        # SQL 注入關鍵字
-        sql_keywords = ['union', 'select', 'insert', 'update', 'delete', 'drop', 'exec', 'script']
-        if any(kw in combined for kw in sql_keywords):
-            analysis['has_sql_keywords'] = True
-            analysis['suspicious_patterns'].append('sql_keywords')
+        # 路徑本身
+        path_str = path.get('path', '')
+        payloads.append(path_str)
 
-        # XSS 模式
-        xss_patterns = ['<script', 'javascript:', 'onerror=', 'onload=', 'alert(']
-        if any(pattern in combined for pattern in xss_patterns):
-            analysis['has_xss_patterns'] = True
-            analysis['suspicious_patterns'].append('xss_patterns')
+        # POST 資料
+        post_data = path.get('post_data', '')
+        if post_data:
+            payloads.append(str(post_data))
 
-        # 命令注入
-        cmd_patterns = ['|', ';', '&&', '$(', '`']
-        if any(pattern in combined for pattern in cmd_patterns):
-            analysis['has_command_injection'] = True
-            analysis['suspicious_patterns'].append('command_injection')
+        # Query 參數
+        query_params = path.get('query_params', {})
+        if query_params:
+            payloads.extend(str(v) for v in query_params.values())
 
-        # 路徑遍歷
-        if '../' in combined or '..\\' in combined or '/etc/passwd' in combined:
-            analysis['has_path_traversal'] = True
-            analysis['suspicious_patterns'].append('path_traversal')
+    if not payloads:
+        return analysis
 
-        # 編碼內容檢測
-        if '%' in combined or 'base64' in combined:
-            analysis['has_encoded_content'] = True
+    # === 1. 長度統計 ===
+    payload_lengths = [len(p) for p in payloads]
+    analysis['total_payload_length'] = sum(payload_lengths)
+    analysis['longest_payload'] = max(payload_lengths)
+    analysis['avg_payload_length'] = analysis['total_payload_length'] / len(payloads)
 
-    # 去重
-    analysis['suspicious_patterns'] = list(set(analysis['suspicious_patterns']))
+    # === 2. 編碼檢測 ===
+    combined = ' '.join(payloads).lower()
+
+    # URL 編碼
+    if re.search(r'%[0-9a-f]{2}', combined):
+        analysis['encoding_detected'].append('url_encoded')
+
+    # Base64 模式
+    if re.search(r'[A-Za-z0-9+/]{20,}={0,2}', combined):
+        analysis['encoding_detected'].append('base64_pattern')
+
+    # Hex 編碼
+    if re.search(r'(0x[0-9a-f]+|\\x[0-9a-f]{2})', combined):
+        analysis['encoding_detected'].append('hex_encoded')
+
+    # HTML entities
+    if re.search(r'&#?[a-z0-9]+;', combined):
+        analysis['encoding_detected'].append('html_entities')
+
+    # Unicode 轉義
+    if re.search(r'\\u[0-9a-f]{4}', combined):
+        analysis['encoding_detected'].append('unicode_escaped')
+
+    analysis['has_encoded_content'] = len(analysis['encoding_detected']) > 0
+
+    # === 3. 複雜度評估 ===
+    complexity_score = 0
+
+    # 長度因素
+    if analysis['longest_payload'] > 500:
+        complexity_score += 2
+    elif analysis['longest_payload'] > 200:
+        complexity_score += 1
+
+    # 編碼因素
+    complexity_score += len(analysis['encoding_detected'])
+
+    # 特殊字符密度
+    special_chars = len(re.findall(r'[^a-zA-Z0-9\s]', combined))
+    if len(combined) > 0 and special_chars > len(combined) * 0.3:
+        complexity_score += 2
+
+    # 評級
+    if complexity_score >= 5:
+        analysis['payload_complexity'] = 'high'
+    elif complexity_score >= 2:
+        analysis['payload_complexity'] = 'medium'
+    else:
+        analysis['payload_complexity'] = 'low'
 
     return analysis
 
@@ -466,83 +519,3 @@ def identify_attack_phases(session: Dict[str, Any]) -> List[str]:
         phases.append('persistence_attempt')
 
     return phases if phases else ['unknown']
-=======
-import logging
-import requests
-from typing import Dict, Any
-
-class DataEnricher:
-    def __init__(self):
-        self.ip_info_cache = {}
-        logging.info("DataEnricher initialized")
-
-    def enrich_ip_info(self, ip: str) -> Dict[str, Any]:
-        """擴充 IP 地址相關信息"""
-        if ip in self.ip_info_cache:
-            return self.ip_info_cache[ip]
-
-        try:
-            response = requests.get(f"https://ipapi.co/{ip}/json/")
-            if response.status_code == 200:
-                ip_info = response.json()
-                self.ip_info_cache[ip] = {
-                    'country': ip_info.get('country_name'),
-                    'region': ip_info.get('region'),
-                    'city': ip_info.get('city'),
-                    'org': ip_info.get('org'),
-                    'as_number': ip_info.get('asn'),
-                    'latitude': ip_info.get('latitude'),
-                    'longitude': ip_info.get('longitude')
-                }
-                return self.ip_info_cache[ip]
-        except Exception as e:
-            logging.error(f"Error enriching IP info for {ip}: {e}")
-        
-        return {}
-
-    def enrich_attack_type(self, data: Dict[str, Any]) -> Dict[str, str]:
-        """根據攻擊特徵識別攻擊類型"""
-        attack_signatures = {
-            'sql_injection': ['SELECT', 'UNION', 'INSERT', 'DROP', 'UPDATE'],
-            'xss': ['<script>', 'javascript:', 'onerror=', 'onload='],
-            'command_injection': [';', '|', '&&', '`', '$(',],
-            'path_traversal': ['../', '..\\', '/etc/passwd'],
-            'brute_force': ['admin', 'password', 'login']
-        }
-
-        detected_attacks = []
-        payload = str(data.get('payload', '')).lower()
-
-        for attack_type, signatures in attack_signatures.items():
-            if any(sig.lower() in payload for sig in signatures):
-                detected_attacks.append(attack_type)
-
-        return {
-            'attack_types': detected_attacks,
-            'attack_confidence': 'high' if detected_attacks else 'low'
-        }
-
-    def enrich(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """擴充數據"""
-        try:
-            enriched_data = data.copy()
-
-            # 擴充 IP 信息
-            if 'source_ip' in data:
-                ip_info = self.enrich_ip_info(data['source_ip'])
-                enriched_data['ip_info'] = ip_info
-
-            # 擴充攻擊類型信息
-            attack_info = self.enrich_attack_type(data)
-            enriched_data['attack_info'] = attack_info
-
-            # 添加時間戳
-            from datetime import datetime
-            enriched_data['enrichment_timestamp'] = datetime.utcnow().isoformat()
-
-            return enriched_data
-
-        except Exception as e:
-            logging.error(f"Error in data enrichment: {e}")
-            raise
->>>>>>> main
