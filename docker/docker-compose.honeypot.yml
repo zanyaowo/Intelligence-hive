@@ -97,24 +97,6 @@ services:
     depends_on:
      - tanner_redis
 
-  ingestion_api:
-    build: ../services/ingestion_api
-    container_name: ingestion_api
-    restart: always
-    networks:
-     - snare_tanner_network
-    ports:
-     - "8082:8000"
-    environment:
-      - REDIS_HOST=analytics_redis
-      - REDIS_PORT=6379
-      - REDIS_QUEUE=sessions_queue
-    env_file:
-      - ../services/ingestion_api/.env
-    read_only: true
-    tmpfs:
-     - /tmp
-
   tanner:
     build:
       context: ../honeypot_configs/snare_tanner/tanner
