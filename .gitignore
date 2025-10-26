@@ -1,6 +1,5 @@
 # Data files
 data/
-*.json
 *.jsonl
 *.pkl
 
@@ -49,3 +48,9 @@ ENV/
 
 # OS files
 Thumbs.db
+
+# Environment variables (sensitive data)
+.env
+.env.local
+.env.*.local
+!.env.example

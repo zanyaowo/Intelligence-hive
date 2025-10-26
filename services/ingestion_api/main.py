@@ -1,6 +1,7 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 import uvicorn
 import logging
+from auth import verify_API_key
 
 app = FastAPI()
 
@@ -8,12 +9,17 @@ app = FastAPI()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 @app.post("/ingest")
-async def ingest_data(request: Request):
+async def ingest_data(
+    request: Request,
+    api_key:str = Depends(verify_API_key)
+    ):
     try:
         data = await request.json()
         logging.info(f"Received data: {data}")
-        # In a real application, you would process and store this data
-        return {"status": "success", "message": "Data received"}
+
+        # TODO 處理資料
+
+        return {"status": "success", "seesions_count": len(data)}
     except Exception as e:
         logging.error(f"Error receiving data: {e}")
         return {"status": "error", "message": str(e)}
