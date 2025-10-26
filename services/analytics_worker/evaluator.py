@@ -131,19 +131,34 @@ def calculate_risk_score(session: Dict[str, Any]) -> Tuple[int, Dict[str, int]]:
     breakdown['automation_score'] = min(automation_score, 15)
 
     # === 4. Payload 危險性分數 (0-15) ===
+    # 基於 Tanner 的攻擊類型分類（不重複檢測）
+    attack_types = session.get('attack_types', [])
     payload_analysis = session.get('payload_analysis', {})
 
     payload_score = 0
-    if payload_analysis.get('has_sql_keywords', False):
+
+    # 根據 Tanner 識別的攻擊類型計分
+    if 'cmd_exec' in attack_types or 'rfi' in attack_types:
+        payload_score += 6  # 最危險
+    if 'sqli' in attack_types:
         payload_score += 5
-    if payload_analysis.get('has_xss_patterns', False):
-        payload_score += 3
-    if payload_analysis.get('has_command_injection', False):
-        payload_score += 6
-    if payload_analysis.get('has_path_traversal', False):
+    if 'lfi' in attack_types or 'xxe_injection' in attack_types:
         payload_score += 4
-    if payload_analysis.get('has_encoded_content', False):
+    if 'xss' in attack_types:
+        payload_score += 3
+
+    # 補充：編碼複雜度加分
+    payload_complexity = payload_analysis.get('payload_complexity', 'low')
+    if payload_complexity == 'high':
+        payload_score += 3
+    elif payload_complexity == 'medium':
         payload_score += 2
+
+    # 補充：結構性特徵加分
+    if payload_analysis.get('has_command_chaining', False):
+        payload_score += 2  # 命令連接符表示更複雜的攻擊
+    if payload_analysis.get('has_path_traversal_pattern', False):
+        payload_score += 1  # 路徑遍歷模式
 
     breakdown['payload_score'] = min(payload_score, 15)
 
