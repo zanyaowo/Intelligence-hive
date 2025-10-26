@@ -1,9 +1,5 @@
-# ⚠️  注意：此配置已遷移至統一的 Docker 架構
-# ⚠️  新配置位置：/docker/docker-compose.honeypot.yml
-# ⚠️  建議使用：docker-compose -f docker/docker-compose.all.yml up
-#
-# 此檔案保留作為備份和獨立測試用途，但未來更新將在新配置中進行
-# 如需完整的 Analytics 服務，請使用 /docker 目錄下的配置
+# docker/docker-compose.honeypot.yml
+# 蜜罐服務（SNARE + Tanner + Ingestion API）
 
 networks:
   snare_tanner_network:
@@ -12,7 +8,7 @@ services:
 
   snare:
     build:
-      context: ./snare
+      context: ../honeypot_configs/snare_tanner/snare
       args:
         PAGE_URL: www.saucedemo.com
     container_name: snare_honeypot
@@ -31,7 +27,7 @@ services:
         condition: service_healthy
 
   tanner_redis:
-    build: ./tanner/docker/redis
+    build: ../honeypot_configs/snare_tanner/tanner/docker/redis
     container_name: tanner_redis
     restart: always
     stop_signal: SIGKILL
@@ -40,11 +36,11 @@ services:
      - snare_tanner_network
     image: tanner_redis_local
     tmpfs:
-     - /data:uid=999,gid=999 # Allow Redis to write RDB files
+     - /data:uid=999,gid=999
     read_only: true
 
   tanner_phpox:
-    build: ./tanner/docker/phpox
+    build: ../honeypot_configs/snare_tanner/tanner/docker/phpox
     container_name: tanner_phpox
     restart: always
     stop_signal: SIGKILL
@@ -57,7 +53,7 @@ services:
 
   tanner_api:
     build:
-      context: ./tanner
+      context: ../honeypot_configs/snare_tanner/tanner
       dockerfile: docker/tanner/Dockerfile
     environment:
       - PATH=/opt/tanner/tanner-env/bin/:$PATH
@@ -80,7 +76,7 @@ services:
 
   tanner_web:
     build:
-      context: ./tanner
+      context: ../honeypot_configs/snare_tanner/tanner
       dockerfile: docker/tanner/Dockerfile
     environment:
       - PATH=/opt/tanner/tanner-env/bin/:$PATH
@@ -101,21 +97,9 @@ services:
     depends_on:
      - tanner_redis
 
-  ingestion_api:
-    build: ../../services/ingestion_api
-    container_name: ingestion_api
-    restart: always
-    networks:
-     - snare_tanner_network
-    ports:
-     - "8082:8000"
-    read_only: true
-    tmpfs:
-     - /tmp
-
   tanner:
     build:
-      context: ./tanner
+      context: ../honeypot_configs/snare_tanner/tanner
       dockerfile: docker/tanner/Dockerfile
     environment:
       - PATH=/opt/tanner/tanner-env/bin/:$PATH

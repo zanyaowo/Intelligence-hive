@@ -1,0 +1,66 @@
+# docker/docker-compose.analytics.yml
+# Analytics 服務（數據分析）
+
+networks:
+  analytics_network:
+  snare_tanner_network:
+    external: true
+    name: snare_tanner_snare_tanner_network
+
+services:
+  analytics_redis:
+    image: redis:7-alpine
+    container_name: analytics_redis
+    restart: always
+    networks:
+      - analytics_network
+    ports:
+      - "6380:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - analytics_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  ingestion_api:
+    build: ../services/ingestion_api
+    container_name: ingestion_api
+    restart: always
+    networks:
+      - analytics_network
+      - snare_tanner_network
+    ports:
+      - "8082:8000"
+    environment:
+      - REDIS_HOST=analytics_redis
+      - REDIS_PORT=6379
+      - REDIS_QUEUE=sessions_queue
+    env_file:
+      - ../services/ingestion_api/.env
+    read_only: true
+    tmpfs:
+      - /tmp
+    depends_on:
+      analytics_redis:
+        condition: service_healthy
+
+  analytics_worker:
+    build: ../services/analytics_worker
+    container_name: analytics_worker
+    restart: always
+    networks:
+      - analytics_network
+      - snare_tanner_network
+    environment:
+      - REDIS_HOST=analytics_redis
+      - REDIS_PORT=6379
+      - REDIS_QUEUE=sessions_queue
+    depends_on:
+      analytics_redis:
+        condition: service_healthy
+
+volumes:
+  analytics_redis_data:

@@ -1,18 +1,17 @@
-# ⚠️  注意：此配置已遷移至統一的 Docker 架構
-# ⚠️  新配置位置：/docker/docker-compose.honeypot.yml
-# ⚠️  建議使用：docker-compose -f docker/docker-compose.all.yml up
-#
-# 此檔案保留作為備份和獨立測試用途，但未來更新將在新配置中進行
-# 如需完整的 Analytics 服務，請使用 /docker 目錄下的配置
+# docker/docker-compose.all.yml
+# 整合所有服務（蜜罐 + 分析）
 
 networks:
   snare_tanner_network:
+  analytics_network:
 
 services:
 
+  # ==================== 蜜罐服務 ====================
+
   snare:
     build:
-      context: ./snare
+      context: ../honeypot_configs/snare_tanner/snare
       args:
         PAGE_URL: www.saucedemo.com
     container_name: snare_honeypot
@@ -31,7 +30,7 @@ services:
         condition: service_healthy
 
   tanner_redis:
-    build: ./tanner/docker/redis
+    build: ../honeypot_configs/snare_tanner/tanner/docker/redis
     container_name: tanner_redis
     restart: always
     stop_signal: SIGKILL
@@ -40,11 +39,11 @@ services:
      - snare_tanner_network
     image: tanner_redis_local
     tmpfs:
-     - /data:uid=999,gid=999 # Allow Redis to write RDB files
+     - /data:uid=999,gid=999
     read_only: true
 
   tanner_phpox:
-    build: ./tanner/docker/phpox
+    build: ../honeypot_configs/snare_tanner/tanner/docker/phpox
     container_name: tanner_phpox
     restart: always
     stop_signal: SIGKILL
@@ -57,7 +56,7 @@ services:
 
   tanner_api:
     build:
-      context: ./tanner
+      context: ../honeypot_configs/snare_tanner/tanner
       dockerfile: docker/tanner/Dockerfile
     environment:
       - PATH=/opt/tanner/tanner-env/bin/:$PATH
@@ -80,7 +79,7 @@ services:
 
   tanner_web:
     build:
-      context: ./tanner
+      context: ../honeypot_configs/snare_tanner/tanner
       dockerfile: docker/tanner/Dockerfile
     environment:
       - PATH=/opt/tanner/tanner-env/bin/:$PATH
@@ -101,21 +100,9 @@ services:
     depends_on:
      - tanner_redis
 
-  ingestion_api:
-    build: ../../services/ingestion_api
-    container_name: ingestion_api
-    restart: always
-    networks:
-     - snare_tanner_network
-    ports:
-     - "8082:8000"
-    read_only: true
-    tmpfs:
-     - /tmp
-
   tanner:
     build:
-      context: ./tanner
+      context: ../honeypot_configs/snare_tanner/tanner
       dockerfile: docker/tanner/Dockerfile
     environment:
       - PATH=/opt/tanner/tanner-env/bin/:$PATH
@@ -144,6 +131,62 @@ services:
       timeout: 10s
       retries: 5
 
+  # ==================== 數據處理服務 ====================
+
+  ingestion_api:
+    build: ../services/ingestion_api
+    container_name: ingestion_api
+    restart: always
+    networks:
+     - snare_tanner_network
+     - analytics_network
+    ports:
+     - "8082:8000"
+    environment:
+      - REDIS_HOST=analytics_redis
+      - REDIS_PORT=6379
+      - REDIS_QUEUE=sessions_queue
+    env_file:
+      - ../services/ingestion_api/.env
+    read_only: true
+    tmpfs:
+     - /tmp
+    depends_on:
+      analytics_redis:
+        condition: service_healthy
+
+  analytics_redis:
+    image: redis:7-alpine
+    container_name: analytics_redis
+    restart: always
+    networks:
+      - analytics_network
+    ports:
+      - "6380:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - analytics_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  analytics_worker:
+    build: ../services/analytics_worker
+    container_name: analytics_worker
+    restart: always
+    networks:
+      - analytics_network
+    environment:
+      - REDIS_HOST=analytics_redis
+      - REDIS_PORT=6379
+      - REDIS_QUEUE=sessions_queue
+    depends_on:
+      analytics_redis:
+        condition: service_healthy
+
 volumes:
   redis_data:
   tanner_logs:
+  analytics_redis_data:
