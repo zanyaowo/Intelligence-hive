@@ -1,3 +1,10 @@
+# ⚠️  注意：此配置已遷移至統一的 Docker 架構
+# ⚠️  新配置位置：/docker/docker-compose.honeypot.yml
+# ⚠️  建議使用：docker-compose -f docker/docker-compose.all.yml up
+#
+# 此檔案保留作為備份和獨立測試用途，但未來更新將在新配置中進行
+# 如需完整的 Analytics 服務，請使用 /docker 目錄下的配置
+
 networks:
   snare_tanner_network:
 
