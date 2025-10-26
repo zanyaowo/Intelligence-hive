@@ -10,7 +10,7 @@ REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
 logging.info(f"Analytics Worker starting...")
 logging.info(f"Redis: {REDIS_HOST}:{REDIS_PORT}")
 
-# «Bê/TM
+
 while True:
     logging.info("Worker running... (placeholder)")
     time.sleep(60)
