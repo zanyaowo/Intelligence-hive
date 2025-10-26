@@ -1,12 +1,26 @@
+<<<<<<< HEAD
 import os
 import time
 import json
 import logging
 import redis
 from typing import List, Dict, Any, Tuple
+=======
+import logging
+from time import sleep
+from tasks import process_honeypot_data
+from enricher import DataEnricher
+from evaluator import ThreatEvaluator
+from normalizer import DataNormalizer
+>>>>>>> main
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# 配置日誌
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
+<<<<<<< HEAD
 # 配置
 REDIS_HOST = os.getenv("REDIS_HOST", "analytics_redis")
 REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
@@ -24,8 +38,26 @@ logging.info(f"Redis: {REDIS_HOST}:{REDIS_PORT}")
 logging.info(f"Stream: {REDIS_STREAM}")
 logging.info(f"Consumer Group: {CONSUMER_GROUP}")
 logging.info(f"Batch Size: {BATCH_SIZE}")
+=======
+class AnalyticsWorker:
+    def __init__(self):
+        self.enricher = DataEnricher()
+        self.evaluator = ThreatEvaluator()
+        self.normalizer = DataNormalizer()
+        logging.info("Analytics Worker initialized")
 
+    def process_data(self, data):
+        try:
+            # 1. 標準化數據
+            normalized_data = self.normalizer.normalize(data)
+            logging.info("Data normalized successfully")
+>>>>>>> main
 
+            # 2. 擴充數據
+            enriched_data = self.enricher.enrich(normalized_data)
+            logging.info("Data enriched successfully")
+
+<<<<<<< HEAD
 def create_consumer_group():
     """創建消費者組（如果不存在）"""
     try:
@@ -163,3 +195,31 @@ def main_loop():
 
 if __name__ == "__main__":
     main_loop()
+=======
+            # 3. 評估威脅
+            evaluation_results = self.evaluator.evaluate(enriched_data)
+            logging.info("Threat evaluation completed")
+
+            return evaluation_results
+
+        except Exception as e:
+            logging.error(f"Error processing data: {e}")
+            raise
+
+    def run(self, interval_seconds=60):
+        """持續運行數據處理"""
+        logging.info(f"Starting Analytics Worker with {interval_seconds}s interval")
+        while True:
+            try:
+                # 處理蜜罐數據
+                process_honeypot_data(self.process_data)
+                logging.info("Completed processing cycle")
+            except Exception as e:
+                logging.error(f"Error in processing cycle: {e}")
+            
+            sleep(interval_seconds)
+
+if __name__ == "__main__":
+    worker = AnalyticsWorker()
+    worker.run()
+>>>>>>> main
