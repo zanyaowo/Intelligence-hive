@@ -8,12 +8,13 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 class TannerAgent:
 
-    def __init__(self, tanner_api_url, ingestion_api_url):
+    def __init__(self, tanner_api_url,  ingestion_api_url, api_key=None):
         """Initialize Tanner Agent.
 
         Args:
             tanner_api_url: Tanner API URL (e.g., http://localhost:8081)
             ingestion_api_url: Ingestion API URL (e.g., http://localhost:8082/ingest)
+            api-key: key for authentication
         """
         self.metrics = {
             'start_time': time.time(),
@@ -27,6 +28,7 @@ class TannerAgent:
         }
         self.tanner_api_url = tanner_api_url
         self.ingestion_api_url = ingestion_api_url
+        self.api_key = api_key
         self.processed_sessions = self._load_processed_sessions()
         logging.info(f"TannerAgent initialized. Tanner API: {tanner_api_url}, Ingestion API: {ingestion_api_url}")
 
@@ -79,7 +81,16 @@ class TannerAgent:
 
         logging.info(f"Sending {len(data)} sessions to Ingestion API...")
         try:
-            response = requests.post(self.ingestion_api_url, json=data)
+            headers = {}
+
+            if self.api_key:
+                headers["X-API-KEY"] = self.api_key
+
+            response = requests.post(
+                self.ingestion_api_url,
+                json=data,
+                headers=headers
+            )
             response.raise_for_status()
             self.metrics['sessions_sent'] += len(data)
             logging.info(f"Data sent successfully. Response: {response.json()}")

@@ -1,12 +1,18 @@
+import os
+from dotenv import load_dotenv
 from agent import TannerAgent
 import logging
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Configuration
-TANNER_API_URL = "http://localhost:8081"
-INGESTION_API_URL = "http://localhost:8082/ingest"
-AGENT_RUN_INTERVAL_SECONDS = 60  # Run every 60 seconds
+TANNER_API_URL = os.getenv("TANNER_API_URL", "http://localhost:8081")
+INGESTION_API_URL = os.getenv("INGESTION_API_URL", "http://localhost:8082/ingest")
+AGENT_RUN_INTERVAL_SECONDS = int(os.getenv("AGENT_RUN_INTERVAL_SECONDS", 60))
+API_KEY = os.getenv("INGESTION_API_KEY")  # ✨ 讀取 API Key
+
+if not API_KEY:
+    raise ValueError("❌ INGESTION_API_KEY not found in .env!")
 
 if __name__ == "__main__":
     logging.info("=" * 80)
@@ -19,7 +25,8 @@ if __name__ == "__main__":
 
     agent = TannerAgent(
         tanner_api_url=TANNER_API_URL,
-        ingestion_api_url=INGESTION_API_URL
+        ingestion_api_url=INGESTION_API_URL,
+        api_key=API_KEY
     )
 
     try:
