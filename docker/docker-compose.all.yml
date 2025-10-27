@@ -25,9 +25,9 @@ services:
     image: snare_honeypot_local
     environment:
       - TANNER=tanner
-    depends_on:
-      tanner:
-        condition: service_healthy
+    # depends_on:
+    #   tanner:
+    #     condition: service_healthy
 
   tanner_redis:
     build: ../honeypot_configs/snare_tanner/tanner/docker/redis
@@ -127,12 +127,12 @@ services:
      - tanner_web
      - tanner_phpox
      - tanner_redis
-    healthcheck:
-      test: ["CMD-SHELL", "wget --spider -q http://0.0.0.0:8090/version || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 40s
+    # healthcheck:
+    #   test: ["CMD-SHELL", "wget --spider -q http://0.0.0.0:8090/version || exit 1"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 5
+    #   start_period: 40s
 
   # ==================== 數據處理服務 ====================
 
@@ -206,6 +206,16 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+
+  frontend:
+    build:
+      context: ../frontend
+    container_name: frontend_app
+    restart: always
+    ports:
+      - "8084:80"
+    networks:
+      - analytics_network
 
 volumes:
   redis_data:

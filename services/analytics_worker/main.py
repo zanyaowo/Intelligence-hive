@@ -57,7 +57,7 @@ def process_batch(messages: List[Tuple[bytes, Dict[bytes, bytes]]]) -> int:
     from normalizer import normalize_session, validate_session
     from enricher import enrich_session
     from evaluator import evaluate_session
-    from loader import save_session
+    from loader import save_session, update_daily_summary
 
     processed = 0
 
@@ -97,7 +97,7 @@ def process_batch(messages: List[Tuple[bytes, Dict[bytes, bytes]]]) -> int:
 
                 logging.info(
                     f"✅ Processed {sess_uuid} | Risk: {risk_score}/100 | "
-                    f"Threat: {threat_level} | Alert: {alert_level}"
+                    f"Threat: {threat: {threat_level} | Alert: {alert_level}"
                 )
 
                 processed += 1
@@ -111,6 +111,11 @@ def process_batch(messages: List[Tuple[bytes, Dict[bytes, bytes]]]) -> int:
         except Exception as e:
             logging.error(f"❌ Error processing message {msg_id}: {e}", exc_info=True)
             # 不 ACK 失敗的消息，之後可以重試
+
+    # 在處理完批次後更新每日摘要
+    if processed > 0:
+        today = datetime.utcnow().strftime("%Y-%m-%d")
+        update_daily_summary(today)
 
     return processed
 

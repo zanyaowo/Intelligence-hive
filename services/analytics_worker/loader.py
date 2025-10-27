@@ -7,9 +7,9 @@
 import os
 import json
 import logging
+from pathlib import Path
 from typing import Dict, Any, List
 from datetime import datetime
-from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +17,24 @@ logger = logging.getLogger(__name__)
 DATA_DIR = os.getenv("DATA_DIR", "/app/data")
 OUTPUT_FORMAT = os.getenv("OUTPUT_FORMAT", "jsonl")  # jsonl, json, or database
 BATCH_WRITE = os.getenv("BATCH_WRITE", "false").lower() == "true"
+
+def read_jsonl_file(file_path: Path) -> List[Dict[str, Any]]:
+    """讀取 JSONL 檔案"""
+    sessions = []
+
+    if not file_path.exists():
+        return sessions
+
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    sessions.append(json.loads(line))
+        return sessions
+    except Exception as e:
+        logger.error(f"Error reading JSONL file {file_path}: {e}")
+        return []
 
 
 def save_session(session: Dict[str, Any]) -> bool:
@@ -436,3 +454,33 @@ def get_storage_stats() -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"❌ Error getting storage stats: {e}")
         return {'error': str(e)}
+
+
+def update_daily_summary(date: str):
+    """讀取當天的所有 session 並重新計算統計數據"""
+    logger.info(f"🔄 Updating daily summary for {date}...")
+    try:
+        # 讀取當天的所有 session
+        sessions_file = Path(DATA_DIR) / "processed" / date / "sessions.jsonl"
+        if not sessions_file.exists():
+            logger.warning(f"No session file found for {date}, cannot update summary.")
+            return
+
+        all_sessions = read_jsonl_file(sessions_file)
+
+        if not all_sessions:
+            logger.info(f"No sessions to process for {date}.")
+            return
+
+        # 重新計算並保存統計
+        stats_saved = save_statistics(all_sessions)
+        intel_saved = save_threat_intelligence_feed(all_sessions)
+
+        if stats_saved and intel_saved:
+            logger.info(f"✅ Successfully updated daily summary for {date}.")
+        else:
+            logger.error(f"❌ Failed to update daily summary for {date}.")
+
+    except Exception as e:
+        logger.error(f"❌ Unexpected error during daily summary update: {e}", exc_info=True)
+

@@ -1,5 +1,7 @@
 import os
 from dotenv import load_dotenv
+load_dotenv()
+print(f"Debug: INGESTION_API_KEY from .env: {os.getenv('INGESTION_API_KEY')}")
 from agent import TannerAgent
 import logging
 
