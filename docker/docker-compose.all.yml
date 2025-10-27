@@ -25,9 +25,9 @@ services:
     image: snare_honeypot_local
     environment:
       - TANNER=tanner
-    depends_on:
-      tanner:
-        condition: service_healthy
+    # depends_on:
+    #   tanner:
+    #     condition: service_healthy
 
   tanner_redis:
     build: ../honeypot_configs/snare_tanner/tanner/docker/redis
@@ -120,16 +120,19 @@ services:
      - "8090:8090"
     image: tanner_local
     command: tanner
-    read_only: true
+    volumes:
+     - /var/run/docker.sock:/var/run/docker.sock:ro
     depends_on:
      - tanner_api
      - tanner_web
      - tanner_phpox
-    healthcheck:
-      test: ["CMD-SHELL", "wget --spider -q http://tanner:8090/version || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
+     - tanner_redis
+    # healthcheck:
+    #   test: ["CMD-SHELL", "wget --spider -q http://0.0.0.0:8090/version || exit 1"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 5
+    #   start_period: 40s
 
   # ==================== 數據處理服務 ====================
 
@@ -182,11 +185,41 @@ services:
       - REDIS_HOST=analytics_redis
       - REDIS_PORT=6379
       - REDIS_QUEUE=sessions_queue
+    volumes:
+      - analytics_data:/app/data
     depends_on:
       analytics_redis:
         condition: service_healthy
+
+  query_api:
+    build: ../services/query_api
+    container_name: query_api
+    restart: always
+    networks:
+      - analytics_network
+    ports:
+      - "8083:8083"
+    volumes:
+      - analytics_data:/app/data:ro  # 只讀掛載，不需要寫入權限
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: ../frontend
+    container_name: frontend_app
+    restart: always
+    ports:
+      - "8084:80"
+    networks:
+      - analytics_network
 
 volumes:
   redis_data:
   tanner_logs:
   analytics_redis_data:
+  analytics_data:
+  tanner_data:
