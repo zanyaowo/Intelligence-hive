@@ -120,16 +120,19 @@ services:
      - "8090:8090"
     image: tanner_local
     command: tanner
-    read_only: true
+    volumes:
+     - /var/run/docker.sock:/var/run/docker.sock:ro
     depends_on:
      - tanner_api
      - tanner_web
      - tanner_phpox
+     - tanner_redis
     healthcheck:
-      test: ["CMD-SHELL", "wget --spider -q http://tanner:8090/version || exit 1"]
+      test: ["CMD-SHELL", "wget --spider -q http://0.0.0.0:8090/version || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
+      start_period: 40s
 
   # ==================== 數據處理服務 ====================
 
@@ -209,3 +212,4 @@ volumes:
   tanner_logs:
   analytics_redis_data:
   analytics_data:
+  tanner_data:
