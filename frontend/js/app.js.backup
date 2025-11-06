@@ -28,17 +28,6 @@ function app() {
             alerts: { offset: 0, limit: 50 }
         },
 
-        // 會話過濾器狀態
-        sessionFilters: {
-            threat_level: '',
-            attack_type: '',
-            min_risk: '',
-            peer_ip: '',
-            sess_uuid: '',
-            sort_by: 'risk_score',  // 預設按風險分數排序
-            order: 'desc'  // 預設降序(高到低)
-        },
-
         // 統計頁面狀態
         statsDays: 7,  // 預設 7 天
 
@@ -90,9 +79,38 @@ function app() {
             }
         },
 
-        // 創建加載骨架屏 (使用工具模块)
+        // 創建加載骨架屏
         createLoadingSkeleton(type = 'card') {
-            return SkeletonLoader.create(type);
+            switch (type) {
+                case 'card':
+                    return `
+                        <div class="animate-pulse">
+                            <div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                            <div class="h-8 bg-gray-200 rounded w-1/2"></div>
+                        </div>
+                    `;
+                case 'table':
+                    return `
+                        <div class="animate-pulse space-y-2">
+                            ${Array(5).fill(0).map(() => `
+                                <div class="h-12 bg-gray-200 rounded"></div>
+                            `).join('')}
+                        </div>
+                    `;
+                case 'chart':
+                    return `
+                        <div class="animate-pulse flex items-center justify-center h-64">
+                            <div class="w-48 h-48 bg-gray-200 rounded-full"></div>
+                        </div>
+                    `;
+                default:
+                    return `
+                        <div class="animate-pulse">
+                            <div class="h-4 bg-gray-200 rounded mb-2"></div>
+                            <div class="h-4 bg-gray-200 rounded w-5/6"></div>
+                        </div>
+                    `;
+            }
         },
 
         // 載入可用日期
@@ -165,30 +183,6 @@ function app() {
                     offset: this.pagination.sessions.offset,
                     ...params
                 };
-
-                // 如果沒有明確傳入過濾參數,使用保存的過濾器狀態
-                if (!params.threat_level && this.sessionFilters.threat_level) {
-                    defaultParams.threat_level = this.sessionFilters.threat_level;
-                }
-                if (!params.attack_type && this.sessionFilters.attack_type) {
-                    defaultParams.attack_type = this.sessionFilters.attack_type;
-                }
-                if (!params.min_risk && this.sessionFilters.min_risk) {
-                    defaultParams.min_risk = this.sessionFilters.min_risk;
-                }
-                if (!params.peer_ip && this.sessionFilters.peer_ip) {
-                    defaultParams.peer_ip = this.sessionFilters.peer_ip;
-                }
-                if (!params.sess_uuid && this.sessionFilters.sess_uuid) {
-                    defaultParams.sess_uuid = this.sessionFilters.sess_uuid;
-                }
-
-                // 如果沒有明確傳入排序參數,使用保存的排序狀態
-                if (!params.sort_by) {
-                    defaultParams.sort_by = this.sessionFilters.sort_by;
-                    defaultParams.order = this.sessionFilters.order;
-                }
-
                 this.sessionsData = await API.getSessions(defaultParams);
                 this.renderSessions();
             } catch (error) {
@@ -247,11 +241,9 @@ function app() {
             const summary = data.today_summary;
             const recentAlerts = data.recent_alerts || [];
             const topThreats = data.top_threats || {};
-            const attackAnalysis = data.attack_analysis || {};
-            const hourlyTrend = data.hourly_trend || {};
 
             container.innerHTML = `
-                <!-- 概覽卡片 - 第一行 -->
+                <!-- 概覽卡片 -->
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
                     ${this.createStatCard('總攻擊次數', summary.total_sessions, 'blue')}
                     ${this.createStatCard('高風險會話', summary.high_risk_count, 'orange')}
@@ -260,21 +252,7 @@ function app() {
                     ${this.createStatCard('獨立IP數', summary.unique_ips, 'green')}
                 </div>
 
-                <!-- 概覽卡片 - 第二行 (新增) -->
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                    ${this.createStatCard('掃描器攻擊', summary.scanner_count || 0, 'cyan')}
-                    ${this.createStatCard('手動攻擊', summary.manual_count || 0, 'yellow')}
-                    ${this.createStatCard('平均會話時長', `${(summary.avg_session_duration || 0).toFixed(1)}s`, 'indigo')}
-                    ${this.createStatCard('獨特工具', Object.keys(attackAnalysis.tool_distribution || {}).length, 'pink')}
-                </div>
-
-                <!-- 24小時攻擊趨勢 -->
-                <div class="bg-gray-800 rounded-lg shadow p-6 mb-6">
-                    <h3 class="text-lg font-semibold text-white mb-4">24 小時攻擊趨勢</h3>
-                    <canvas id="hourlyTrendChart" style="max-height: 300px;"></canvas>
-                </div>
-
-                <!-- 圖表區域 - 第一行 -->
+                <!-- 圖表區域 -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                     <!-- 攻擊類型分佈 -->
                     <div class="bg-gray-800 rounded-lg shadow p-6">
@@ -289,36 +267,6 @@ function app() {
                     </div>
                 </div>
 
-                <!-- 圖表區域 - 第二行 (新增) -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                    <!-- 攻擊工具分佈 -->
-                    <div class="bg-gray-800 rounded-lg shadow p-6">
-                        <h3 class="text-lg font-semibold text-white mb-4">攻擊工具分佈</h3>
-                        <canvas id="toolDistributionChart"></canvas>
-                    </div>
-
-                    <!-- 掃描器 vs 手動 -->
-                    <div class="bg-gray-800 rounded-lg shadow p-6">
-                        <h3 class="text-lg font-semibold text-white mb-4">掃描器 vs 手動攻擊</h3>
-                        <canvas id="scannerVsManualChart"></canvas>
-                    </div>
-                </div>
-
-                <!-- 圖表區域 - 第三行 (新增) -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                    <!-- Top 攻擊路徑 -->
-                    <div class="bg-gray-800 rounded-lg shadow p-6">
-                        <h3 class="text-lg font-semibold text-white mb-4">Top 攻擊路徑</h3>
-                        <canvas id="topPathsChart"></canvas>
-                    </div>
-
-                    <!-- HTTP 方法分佈 -->
-                    <div class="bg-gray-800 rounded-lg shadow p-6">
-                        <h3 class="text-lg font-semibold text-white mb-4">HTTP 方法分佈</h3>
-                        <canvas id="methodDistributionChart"></canvas>
-                    </div>
-                </div>
-
                 <!-- 最近告警 -->
                 <div class="bg-gray-800 rounded-lg shadow p-6">
                     <h3 class="text-lg font-semibold text-white mb-4">最近告警</h3>
@@ -330,16 +278,8 @@ function app() {
 
             // 繪製圖表
             setTimeout(() => {
-                // 原有圖表
                 this.renderAttackTypeChart(topThreats.top_attacks || {});
                 this.renderTopIPsChart(topThreats.top_ips || {});
-
-                // 新增圖表
-                this.renderHourlyTrendChart(hourlyTrend);
-                this.renderToolDistributionChart(attackAnalysis.tool_distribution || {});
-                this.renderScannerVsManualChart(attackAnalysis.scanner_vs_manual || {});
-                this.renderTopPathsChart(topThreats.top_paths || {});
-                this.renderMethodDistributionChart(attackAnalysis.method_distribution || {});
             }, 100);
         },
 
@@ -356,73 +296,39 @@ function app() {
             container.innerHTML = `
                 <!-- 過濾器 -->
                 <div class="bg-gray-800 rounded-lg shadow p-4 mb-4">
-                    <div class="space-y-4">
-                        <!-- 第一行: 過濾條件 -->
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-200 mb-1">威脅等級</label>
-                                <select class="w-full border-gray-600 bg-gray-700 text-white rounded-md shadow-sm" id="threat-level-filter">
-                                    <option value="" ${this.sessionFilters.threat_level === '' ? 'selected' : ''}>全部</option>
-                                    <option value="CRITICAL" ${this.sessionFilters.threat_level === 'CRITICAL' ? 'selected' : ''}>CRITICAL</option>
-                                    <option value="HIGH" ${this.sessionFilters.threat_level === 'HIGH' ? 'selected' : ''}>HIGH</option>
-                                    <option value="MEDIUM" ${this.sessionFilters.threat_level === 'MEDIUM' ? 'selected' : ''}>MEDIUM</option>
-                                    <option value="LOW" ${this.sessionFilters.threat_level === 'LOW' ? 'selected' : ''}>LOW</option>
-                                    <option value="INFO" ${this.sessionFilters.threat_level === 'INFO' ? 'selected' : ''}>INFO</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-200 mb-1">攻擊類型</label>
-                                <select class="w-full border-gray-600 bg-gray-700 text-white rounded-md shadow-sm" id="attack-type-filter">
-                                    <option value="" ${this.sessionFilters.attack_type === '' ? 'selected' : ''}>全部</option>
-                                    <option value="sqli" ${this.sessionFilters.attack_type === 'sqli' ? 'selected' : ''}>SQL 注入</option>
-                                    <option value="xss" ${this.sessionFilters.attack_type === 'xss' ? 'selected' : ''}>XSS</option>
-                                    <option value="cmd_exec" ${this.sessionFilters.attack_type === 'cmd_exec' ? 'selected' : ''}>命令執行</option>
-                                    <option value="lfi" ${this.sessionFilters.attack_type === 'lfi' ? 'selected' : ''}>本地檔案包含</option>
-                                    <option value="rfi" ${this.sessionFilters.attack_type === 'rfi' ? 'selected' : ''}>遠端檔案包含</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-200 mb-1">最小風險分數</label>
-                                <input type="number" min="0" max="100" placeholder="0-100" value="${this.sessionFilters.min_risk}"
-                                       class="w-full border-gray-600 bg-gray-700 text-white rounded-md shadow-sm" id="min-risk-filter">
-                            </div>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-200 mb-1">威脅等級</label>
+                            <select class="w-full border-gray-600 bg-gray-700 text-white rounded-md shadow-sm" id="threat-level-filter">
+                                <option value="">全部</option>
+                                <option value="CRITICAL">CRITICAL</option>
+                                <option value="HIGH">HIGH</option>
+                                <option value="MEDIUM">MEDIUM</option>
+                                <option value="LOW">LOW</option>
+                                <option value="INFO">INFO</option>
+                            </select>
                         </div>
-
-                        <!-- 第二行: 搜尋條件 -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-200 mb-1">來源 IP</label>
-                                <input type="text" placeholder="例: 192.168.1.1 或 192.168" value="${this.sessionFilters.peer_ip || ''}"
-                                       class="w-full border-gray-600 bg-gray-700 text-white rounded-md shadow-sm" id="ip-filter">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-200 mb-1">會話 UUID</label>
-                                <input type="text" placeholder="例: abc123 或完整 UUID" value="${this.sessionFilters.sess_uuid || ''}"
-                                       class="w-full border-gray-600 bg-gray-700 text-white rounded-md shadow-sm" id="uuid-filter">
-                            </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-200 mb-1">攻擊類型</label>
+                            <select class="w-full border-gray-600 bg-gray-700 text-white rounded-md shadow-sm" id="attack-type-filter">
+                                <option value="">全部</option>
+                                <option value="sqli">SQL 注入</option>
+                                <option value="xss">XSS</option>
+                                <option value="cmd_exec">命令執行</option>
+                                <option value="lfi">本地檔案包含</option>
+                                <option value="rfi">遠端檔案包含</option>
+                            </select>
                         </div>
-
-                        <!-- 第三行: 排序與操作 -->
-                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                            <div class="md:col-span-2">
-                                <label class="block text-sm font-medium text-gray-200 mb-1">排序方式</label>
-                                <select class="w-full border-gray-600 bg-gray-700 text-white rounded-md shadow-sm" id="sort-filter">
-                                    <option value="risk_score_desc" ${this.sessionFilters.sort_by === 'risk_score' && this.sessionFilters.order === 'desc' ? 'selected' : ''}>風險分數: 高到低</option>
-                                    <option value="risk_score_asc" ${this.sessionFilters.sort_by === 'risk_score' && this.sessionFilters.order === 'asc' ? 'selected' : ''}>風險分數: 低到高</option>
-                                    <option value="processed_at_desc" ${this.sessionFilters.sort_by === 'processed_at' && this.sessionFilters.order === 'desc' ? 'selected' : ''}>時間: 新到舊</option>
-                                    <option value="processed_at_asc" ${this.sessionFilters.sort_by === 'processed_at' && this.sessionFilters.order === 'asc' ? 'selected' : ''}>時間: 舊到新</option>
-                                </select>
-                            </div>
-                            <div class="md:col-span-2 flex gap-2">
-                                <button @click="applySessionFilters()"
-                                        class="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition">
-                                    篩選
-                                </button>
-                                <button @click="clearSessionFilters()"
-                                        class="px-6 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-600 transition">
-                                    清除
-                                </button>
-                            </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-200 mb-1">最小風險分數</label>
+                            <input type="number" min="0" max="100" placeholder="0-100"
+                                   class="w-full border-gray-600 bg-gray-700 text-white rounded-md shadow-sm" id="min-risk-filter">
+                        </div>
+                        <div class="flex items-end">
+                            <button onclick="app().applySessionFilters()"
+                                    class="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
+                                篩選
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -439,12 +345,12 @@ function app() {
                             顯示 ${this.pagination.sessions.offset + 1}-${this.pagination.sessions.offset + data.sessions.length} 條，共 ${data.total} 條
                         </div>
                         <div class="flex space-x-2">
-                            <button @click="prevPageSessions()"
+                            <button onclick="app().prevPageSessions()"
                                     ${this.pagination.sessions.offset === 0 ? 'disabled' : ''}
                                     class="px-4 py-2 bg-gray-700 text-white border border-gray-600 rounded hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed">
                                 ← 上一頁
                             </button>
-                            <button @click="nextPageSessions()"
+                            <button onclick="app().nextPageSessions()"
                                     ${!data.has_more ? 'disabled' : ''}
                                     class="px-4 py-2 bg-gray-700 text-white border border-gray-600 rounded hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed">
                                 下一頁 →
@@ -493,28 +399,21 @@ function app() {
                 return;
             }
 
-            // 提示訊息（如果數據量相同）
-            const dataHint = this.statsDays > 1 ?
-                `<p class="text-sm text-gray-400 mt-2">註：目前僅有 ${data.date} 的數據，多日聚合功能會在有更多歷史數據時生效</p>` : '';
-
             container.innerHTML = `
                 <!-- 日期範圍選擇器 -->
                 <div class="bg-gray-800 rounded-lg shadow p-4 mb-6">
                     <div class="flex items-center justify-between">
-                        <div>
-                            <h3 class="text-lg font-semibold text-white">統計時間範圍</h3>
-                            ${dataHint}
-                        </div>
+                        <h3 class="text-lg font-semibold text-white">統計時間範圍</h3>
                         <div class="flex space-x-2">
-                            <button @click="changeStatsDays(1)"
+                            <button onclick="app().changeStatsDays(1)"
                                     class="px-4 py-2 rounded-lg transition ${this.statsDays === 1 ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}">
                                 今天
                             </button>
-                            <button @click="changeStatsDays(7)"
+                            <button onclick="app().changeStatsDays(7)"
                                     class="px-4 py-2 rounded-lg transition ${this.statsDays === 7 ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}">
                                 7 天
                             </button>
-                            <button @click="changeStatsDays(30)"
+                            <button onclick="app().changeStatsDays(30)"
                                     class="px-4 py-2 rounded-lg transition ${this.statsDays === 30 ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'}">
                                 30 天
                             </button>
@@ -526,7 +425,7 @@ function app() {
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                     ${this.createStatCard('總會話數', data.total_sessions, 'blue')}
                     ${this.createStatCard('平均風險分數', data.average_risk_score?.toFixed(1) || '0', 'purple')}
-                    ${this.createStatCard('需審查數量', data.requires_review_count, 'orange', 'viewRequiresReviewSessions()')}
+                    ${this.createStatCard('需審查數量', data.requires_review_count, 'orange')}
                 </div>
 
                 <!-- 圖表 -->
@@ -577,7 +476,7 @@ function app() {
                     <div class="bg-gray-800 rounded-lg shadow p-6">
                         <div class="flex justify-between items-center mb-4">
                             <h3 class="text-lg font-semibold text-white">惡意 IP 列表</h3>
-                            <button @click="copyIntelIPs()"
+                            <button onclick="app().copyToClipboard(${JSON.stringify(data.malicious_ips || []).replace(/"/g, '&quot;')})"
                                     class="text-sm text-blue-400 hover:text-blue-300">
                                 複製
                             </button>
@@ -609,9 +508,21 @@ function app() {
         // === 輔助方法 ===
 
         // 創建統計卡片
-        // 創建統計卡片 (使用模板模块)
-        createStatCard(title, value, color, clickHandler = null) {
-            return CardTemplates.statCard(title, value, color, clickHandler);
+        createStatCard(title, value, color) {
+            const colors = {
+                blue: 'border-blue-500',
+                red: 'border-red-500',
+                orange: 'border-orange-500',
+                green: 'border-green-500',
+                purple: 'border-purple-500'
+            };
+
+            return `
+                <div class="bg-gray-800 rounded-lg shadow p-6 border-l-4 ${colors[color]}">
+                    <p class="text-sm text-gray-300 mb-1">${title}</p>
+                    <p class="text-3xl font-bold text-white">${value}</p>
+                </div>
+            `;
         },
 
         // 創建告警表格
@@ -630,7 +541,7 @@ function app() {
                     </thead>
                     <tbody class="bg-gray-800 divide-y divide-gray-700">
                         ${alerts.map(alert => `
-                            <tr class="hover:bg-gray-700 cursor-pointer" @click="showSessionDetail('${alert.sess_uuid}')">
+                            <tr class="hover:bg-gray-700 cursor-pointer" onclick="app().showSessionDetail('${alert.sess_uuid}')">
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
                                     ${new Date(alert.processed_at).toLocaleString('zh-TW')}
                                 </td>
@@ -770,14 +681,25 @@ function app() {
             `).join('');
         },
 
-        // 獲取威脅等級徽章 (使用工具模块)
+        // 獲取威脅等級徽章
         getThreatBadge(level) {
-            return Formatters.getThreatBadge(level);
+            const badges = {
+                CRITICAL: '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">CRITICAL</span>',
+                HIGH: '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">HIGH</span>',
+                MEDIUM: '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">MEDIUM</span>',
+                LOW: '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">LOW</span>',
+                INFO: '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">INFO</span>'
+            };
+            return badges[level] || badges.INFO;
         },
 
-        // 獲取風險分數顏色 (使用工具模块)
+        // 獲取風險分數顏色
         getRiskColor(score) {
-            return Formatters.getRiskColor(score);
+            if (score >= 90) return 'text-red-600';
+            if (score >= 70) return 'text-orange-600';
+            if (score >= 40) return 'text-yellow-600';
+            if (score >= 20) return 'text-green-600';
+            return 'text-gray-600';
         },
 
         // 顯示會話詳情
@@ -979,7 +901,7 @@ function app() {
                         完整數據 (JSON)
                     </h3>
                     <div class="relative">
-                        <button @click="copySessionJSON()"
+                        <button onclick="app().copyToClipboard(${JSON.stringify(session).replace(/"/g, '&quot;')})"
                                 class="absolute top-3 right-3 px-3 py-1 bg-gray-700 text-white text-xs rounded hover:bg-gray-600 transition">
                             複製
                         </button>
@@ -1306,21 +1228,6 @@ function app() {
             const threatLevel = document.getElementById('threat-level-filter').value;
             const attackType = document.getElementById('attack-type-filter').value;
             const minRisk = document.getElementById('min-risk-filter').value;
-            const peerIp = document.getElementById('ip-filter').value;
-            const sessUuid = document.getElementById('uuid-filter').value;
-            const sortValue = document.getElementById('sort-filter').value;
-
-            // 解析排序值 (格式: "field_direction")
-            const [sortBy, order] = sortValue.split('_');
-
-            // 保存過濾器狀態
-            this.sessionFilters.threat_level = threatLevel;
-            this.sessionFilters.attack_type = attackType;
-            this.sessionFilters.min_risk = minRisk;
-            this.sessionFilters.peer_ip = peerIp;
-            this.sessionFilters.sess_uuid = sessUuid;
-            this.sessionFilters.sort_by = sortBy === 'risk' ? 'risk_score' : sortBy === 'processed' ? 'processed_at' : sortBy;
-            this.sessionFilters.order = order;
 
             // 重置分頁
             this.pagination.sessions.offset = 0;
@@ -1329,33 +1236,7 @@ function app() {
             if (threatLevel) params.threat_level = threatLevel;
             if (attackType) params.attack_type = attackType;
             if (minRisk) params.min_risk = minRisk;
-            if (peerIp) params.peer_ip = peerIp;
-            if (sessUuid) params.sess_uuid = sessUuid;
-            params.sort_by = this.sessionFilters.sort_by;
-            params.order = this.sessionFilters.order;
 
-            this.loadSessions(params);
-        },
-
-        // 清除會話過濾器
-        clearSessionFilters() {
-            // 清除過濾器狀態
-            this.sessionFilters.threat_level = '';
-            this.sessionFilters.attack_type = '';
-            this.sessionFilters.min_risk = '';
-            this.sessionFilters.peer_ip = '';
-            this.sessionFilters.sess_uuid = '';
-            this.sessionFilters.sort_by = 'risk_score';  // 重置為預設排序
-            this.sessionFilters.order = 'desc';
-
-            // 重置分頁
-            this.pagination.sessions.offset = 0;
-
-            // 重新載入不帶過濾參數,但使用預設排序
-            const params = {
-                sort_by: 'risk_score',
-                order: 'desc'
-            };
             this.loadSessions(params);
         },
 
@@ -1375,44 +1256,6 @@ function app() {
         changeStatsDays(days) {
             this.statsDays = days;
             this.loadStatistics(days);
-        },
-
-        // 查看需要人工審查的會話
-        async viewRequiresReviewSessions() {
-            // 切換到會話列表頁面
-            this.currentTab = 'sessions';
-
-            // 清空現有過濾器並設置 requires_review 過濾
-            this.sessionFilters = {
-                threat_level: '',
-                attack_type: '',
-                min_risk: '',
-                peer_ip: '',
-                sess_uuid: '',
-                sort_by: 'risk_score',
-                order: 'desc'
-            };
-
-            // 重置分頁
-            this.pagination.sessions.offset = 0;
-
-            // 加載需要審查的會話
-            try {
-                const params = {
-                    date: this.selectedDate,
-                    requires_review: true,
-                    sort_by: this.sessionFilters.sort_by,
-                    order: this.sessionFilters.order,
-                    limit: this.pagination.sessions.limit,
-                    offset: this.pagination.sessions.offset
-                };
-
-                this.sessionsData = await API.getSessions(params);
-                this.renderSessions();
-            } catch (error) {
-                console.error('Failed to load requires_review sessions:', error);
-                this.showError('載入需審查會話失敗');
-            }
         },
 
         // 告警列表 - 下一頁
@@ -1438,20 +1281,6 @@ function app() {
             });
         },
 
-        // 複製威脅情報 IP 列表
-        copyIntelIPs() {
-            if (this.intelData && this.intelData.malicious_ips) {
-                this.copyToClipboard(this.intelData.malicious_ips);
-            }
-        },
-
-        // 複製會話詳情 JSON
-        copySessionJSON() {
-            if (this.sessionDetailModal.data) {
-                this.copyToClipboard(JSON.stringify(this.sessionDetailModal.data, null, 2));
-            }
-        },
-
         // 圖表渲染方法（調用 charts.js）
         renderAttackTypeChart(data) {
             window.Charts.renderPieChart('attackTypeChart', data, '攻擊類型');
@@ -1467,27 +1296,6 @@ function app() {
 
         renderAttackDistChart(data) {
             window.Charts.renderHorizontalBarChart('attackDistChart', data, '攻擊分佈');
-        },
-
-        // 新增圖表渲染方法
-        renderHourlyTrendChart(data) {
-            window.Charts.renderLineChart('hourlyTrendChart', data, '');
-        },
-
-        renderToolDistributionChart(data) {
-            window.Charts.renderPieChart('toolDistributionChart', data, '');
-        },
-
-        renderScannerVsManualChart(data) {
-            window.Charts.renderDoughnutChart('scannerVsManualChart', data, '');
-        },
-
-        renderTopPathsChart(data) {
-            window.Charts.renderHorizontalBarChart('topPathsChart', data, '');
-        },
-
-        renderMethodDistributionChart(data) {
-            window.Charts.renderPieChart('methodDistributionChart', data, '');
         }
     };
 }

@@ -12,7 +12,7 @@ window.Charts = {
             legend: {
                 position: 'bottom',
                 labels: {
-                    color: '#E5E7EB',  // 白色文字
+                    color: '#E5E7EB',  
                     font: {
                         size: 13,
                         family: "'Inter', 'Segoe UI', sans-serif"
@@ -137,13 +137,18 @@ window.Charts = {
         const labels = Object.keys(data);
         const values = Object.values(data);
 
+        // 使用模運算循環分配顏色，確保每個標籤都有不同顏色
+        const backgroundColors = labels.map((_, index) =>
+            this.colors.attacks[index % this.colors.attacks.length]
+        );
+
         new Chart(canvas, {
             type: 'pie',
             data: {
                 labels: labels,
                 datasets: [{
                     data: values,
-                    backgroundColor: this.colors.attacks.slice(0, labels.length),
+                    backgroundColor: backgroundColors,
                     borderWidth: 3,
                     borderColor: '#1F2937',  // 深色邊框
                     hoverBorderWidth: 4,
@@ -190,9 +195,9 @@ window.Charts = {
         const labels = Object.keys(data);
         const values = Object.values(data);
 
-        // 使用威脅等級配色
-        const backgroundColors = labels.map(label =>
-            this.colors.threat[label] || this.colors.attacks[0]
+        // 智能配色：先嘗試威脅等級顏色，否則使用索引從 attacks 配色中選擇
+        const backgroundColors = labels.map((label, index) =>
+            this.colors.threat[label] || this.colors.attacks[index % this.colors.attacks.length]
         );
 
         new Chart(canvas, {
@@ -351,6 +356,20 @@ window.Charts = {
                         ...this.defaultOptions.plugins.title,
                         display: !!title,
                         text: title
+                    },
+                    tooltip: {
+                        ...this.defaultOptions.plugins.tooltip,
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                // 水平柱状图数据在 x 轴，不是 y 轴
+                                label += context.parsed.x;
+                                return label;
+                            }
+                        }
                     }
                 },
                 scales: {
