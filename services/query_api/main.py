@@ -9,6 +9,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 import logging
+import os
+from pathlib import Path as PathLib
+
+# 載入環境變數
+from dotenv import load_dotenv
+load_dotenv()
 
 from data_reader import (
     get_sessions,
@@ -19,6 +25,10 @@ from data_reader import (
     get_threat_intelligence,
     get_available_dates
 )
+
+# 顯示數據目錄配置
+DATA_DIR = os.getenv("DATA_DIR", "/app/data")
+print(f"🗂️  使用數據目錄: {DATA_DIR}")
 from models import (
     SessionListResponse,
     SessionDetailResponse,
@@ -86,6 +96,9 @@ async def list_sessions(
     threat_level: Optional[str] = Query(None, description="威脅等級過濾: CRITICAL, HIGH, MEDIUM, LOW, INFO"),
     attack_type: Optional[str] = Query(None, description="攻擊類型過濾: sqli, xss, cmd_exec, etc."),
     min_risk: Optional[int] = Query(None, ge=0, le=100, description="最小風險分數 (0-100)"),
+    peer_ip: Optional[str] = Query(None, description="來源 IP 過濾 (支援部分匹配)"),
+    sess_uuid: Optional[str] = Query(None, description="會話 UUID 過濾 (支援部分匹配)"),
+    requires_review: Optional[bool] = Query(None, description="是否需要人工審查"),
     limit: int = Query(50, ge=1, le=500, description="每頁數量"),
     offset: int = Query(0, ge=0, description="偏移量"),
     sort_by: str = Query("processed_at", description="排序欄位: processed_at, risk_score"),
@@ -104,8 +117,8 @@ async def list_sessions(
     ```
     """
     try:
-        # 如果沒有指定日期，使用今天
-        if not date:
+        # 如果沒有指定日期或日期為 'null' 字串，使用今天
+        if not date or date == "null":
             date = datetime.utcnow().strftime("%Y-%m-%d")
 
         # 驗證日期格式
@@ -120,6 +133,9 @@ async def list_sessions(
             threat_level=threat_level,
             attack_type=attack_type,
             min_risk=min_risk,
+            peer_ip=peer_ip,
+            sess_uuid=sess_uuid,
+            requires_review=requires_review,
             limit=limit,
             offset=offset,
             sort_by=sort_by,
@@ -230,12 +246,14 @@ async def get_stats(
 
 
 @app.get("/api/dashboard", response_model=DashboardResponse)
-async def get_dashboard():
+async def get_dashboard(
+    date: Optional[str] = Query(None, description="日期 (YYYY-MM-DD)，預設今天")
+):
     """
-    獲取儀表板資料（今日摘要）
+    獲取儀表板資料
 
     包含：
-    - 今日會話總數
+    - 會話總數
     - 威脅等級分布
     - TOP 攻擊來源 IP
     - 最近的高風險警報
@@ -245,12 +263,16 @@ async def get_dashboard():
     **範例請求**:
     ```
     GET /api/dashboard
+    GET /api/dashboard?date=2025-01-06
     ```
     """
     try:
-        result = get_dashboard_data()
+        if not date:
+            date = datetime.utcnow().strftime("%Y-%m-%d")
 
-        logger.info(f"📊 Dashboard data requested")
+        result = get_dashboard_data(date)
+
+        logger.info(f"📊 Dashboard data requested for date={date}")
 
         return result
 
@@ -289,6 +311,39 @@ async def get_threat_intel(
 
     except Exception as e:
         logger.error(f"Error getting threat intelligence: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/geo-distribution")
+async def get_geo_dist(
+    date: Optional[str] = Query(None, description="日期 (YYYY-MM-DD)"),
+    days: int = Query(1, ge=1, le=30, description="統計天數")
+):
+    """
+    獲取地理分布統計
+
+    返回按國家聚合的攻擊數據，用於世界地圖可視化
+
+    **範例請求**:
+    ```
+    GET /api/geo-distribution
+    GET /api/geo-distribution?date=2025-10-26
+    GET /api/geo-distribution?days=7  # 最近7天
+    ```
+    """
+    try:
+        if not date:
+            date = datetime.utcnow().strftime("%Y-%m-%d")
+
+        from data_reader import get_geo_distribution
+        result = get_geo_distribution(date=date, days=days)
+
+        logger.info(f"🌍 Geo distribution query: date={date}, days={days}, countries={result['total_countries']}")
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Error getting geo distribution: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
