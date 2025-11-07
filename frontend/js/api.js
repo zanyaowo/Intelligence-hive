@@ -62,5 +62,11 @@ const API = {
     // 獲取可用日期列表
     async getDates() {
         return await this.request('/dates');
+    },
+
+    // 獲取地理分布統計
+    async getGeoDistribution(params = {}) {
+        const queryString = new URLSearchParams(params).toString();
+        return await this.request(`/geo-distribution${queryString ? '?' + queryString : ''}`);
     }
 };

@@ -529,6 +529,62 @@ function app() {
                     ${this.createStatCard('需審查數量', data.requires_review_count, 'orange', 'viewRequiresReviewSessions()')}
                 </div>
 
+                <!-- 世界地圖 - 全寬 -->
+                <div class="bg-gray-800 rounded-lg shadow p-6 mb-6">
+                    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-3">
+                        <h3 class="text-lg font-semibold text-white">全球攻擊來源分布</h3>
+                        <div class="flex items-center gap-3 sm:gap-4 text-sm flex-wrap">
+                            <div class="flex items-center gap-2">
+                                <div class="w-4 h-4 rounded" style="background: rgba(34, 197, 94, 0.7);"></div>
+                                <span class="text-gray-300">低</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <div class="w-4 h-4 rounded" style="background: rgba(234, 179, 8, 0.7);"></div>
+                                <span class="text-gray-300">中</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <div class="w-4 h-4 rounded" style="background: rgba(249, 115, 22, 0.8);"></div>
+                                <span class="text-gray-300">高</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <div class="w-4 h-4 rounded" style="background: rgba(220, 38, 38, 0.9);"></div>
+                                <span class="text-gray-300">極高</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                        <div class="lg:col-span-3">
+                            <div class="bg-gray-750 rounded-lg p-4" style="height: 550px;">
+                                <div class="flex items-center justify-start h-full">
+                                    <div style="width: 100%; max-height: 100%;">
+                                        <canvas id="worldMapChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="lg:col-span-1">
+                            <div class="bg-gray-750 rounded-lg h-full">
+                                <div class="sticky top-0 bg-gray-750 px-4 pt-4 pb-3 border-b border-gray-600 rounded-t-lg">
+                                    <h4 class="text-md font-semibold text-white">國家排名</h4>
+                                </div>
+                                <div class="overflow-y-auto px-4 py-3" style="max-height: 486px;">
+                                    <div id="geoCountryList" class="space-y-2">
+                                        <p class="text-gray-400 text-sm">載入中...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 地理位置統計表格 -->
+                <div class="bg-gray-800 rounded-lg shadow p-6 mb-6">
+                    <h3 class="text-lg font-semibold text-white mb-4">各國攻擊詳情</h3>
+                    <div id="geoStatsTable" class="overflow-x-auto">
+                        <p class="text-gray-400 text-sm">載入中...</p>
+                    </div>
+                </div>
+
                 <!-- 圖表 -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div class="bg-gray-800 rounded-lg shadow p-6">
@@ -551,6 +607,7 @@ function app() {
             setTimeout(() => {
                 this.renderThreatLevelChart(data.threat_level_distribution || {});
                 this.renderAttackDistChart(data.attack_type_distribution || {});
+                this.renderGeoMap();  // 加載世界地圖
             }, 100);
         },
 
@@ -589,7 +646,7 @@ function app() {
 
                     <!-- 惡意 User Agent -->
                     <div class="bg-gray-800 rounded-lg shadow p-6">
-                        <h3 class="text-lg font-semibold text-white mb-4">🤖 惡意 User Agent</h3>
+                        <h3 class="text-lg font-semibold text-white mb-4">惡意 User Agent</h3>
                         <div class="max-h-96 overflow-y-auto">
                             ${this.createUAList(data.malicious_user_agents || [])}
                         </div>
@@ -889,7 +946,7 @@ function app() {
                         ` : ''}
                         ${session.is_scanner ? `
                             <div class="mt-3 p-3 bg-purple-100 border border-purple-300 rounded-lg">
-                                <div class="text-sm font-medium text-purple-800">🤖 偵測為自動化掃描器</div>
+                                <div class="text-sm font-medium text-purple-800">偵測為自動化掃描器</div>
                             </div>
                         ` : ''}
                     </div>
@@ -1157,7 +1214,7 @@ function app() {
                                     <details class="bg-white rounded-lg border border-cyan-200">
                                         <summary class="px-4 py-3 cursor-pointer hover:bg-cyan-50 transition font-medium flex items-center justify-between">
                                             <span class="flex items-center">
-                                                <span class="text-cyan-600 mr-2">🔍</span>
+                                                <span class="text-cyan-600 mr-2">•</span>
                                                 <span>Shodan - 網路設備搜尋引擎</span>
                                             </span>
                                             <span class="text-xs text-gray-500">展開查看</span>
@@ -1195,7 +1252,7 @@ function app() {
                                     <details class="bg-white rounded-lg border border-red-200">
                                         <summary class="px-4 py-3 cursor-pointer hover:bg-red-50 transition font-medium flex items-center justify-between">
                                             <span class="flex items-center">
-                                                <span class="text-red-600 mr-2">🚨</span>
+                                                <span class="text-red-600 mr-2">•</span>
                                                 <span>AbuseIPDB - 惡意 IP 資料庫</span>
                                             </span>
                                             <span class="text-xs text-red-600 font-semibold">
@@ -1254,7 +1311,7 @@ function app() {
                                     <details class="bg-white rounded-lg border border-indigo-200">
                                         <summary class="px-4 py-3 cursor-pointer hover:bg-indigo-50 transition font-medium flex items-center justify-between">
                                             <span class="flex items-center">
-                                                <span class="text-indigo-600 mr-2">🌐</span>
+                                                <span class="text-indigo-600 mr-2">•</span>
                                                 <span>AlienVault OTX - 開放威脅情報</span>
                                             </span>
                                             <span class="text-xs ${reputation.external_sources.alienvault_otx.pulse_count > 0 ? 'text-orange-600 font-semibold' : 'text-gray-500'}">
@@ -1467,6 +1524,119 @@ function app() {
 
         renderAttackDistChart(data) {
             window.Charts.renderHorizontalBarChart('attackDistChart', data, '攻擊分佈');
+        },
+
+        // 渲染世界地圖
+        async renderGeoMap() {
+            try {
+                const geoData = await API.getGeoDistribution({
+                    date: this.selectedDate,
+                    days: this.statsDays
+                });
+
+                if (geoData && geoData.countries) {
+                    await window.Charts.renderWorldMap('worldMapChart', geoData.countries);
+
+                    // 填充國家列表
+                    const listContainer = document.getElementById('geoCountryList');
+                    if (listContainer && geoData.countries.length > 0) {
+                        listContainer.innerHTML = geoData.countries.map((country, index) => `
+                            <div class="bg-gray-700 p-3 rounded-lg hover:bg-gray-600 transition-all duration-200 border border-gray-600 hover:border-gray-500">
+                                <div class="flex justify-between items-start mb-2">
+                                    <div class="flex items-center gap-2">
+                                        <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-600 text-white font-bold text-xs">${index + 1}</span>
+                                        <div>
+                                            <div class="text-white font-medium text-sm">${country.country_name}</div>
+                                            <div class="text-gray-400 text-xs">${country.country_code}</div>
+                                        </div>
+                                    </div>
+                                    <span class="text-xs px-2.5 py-1 rounded-full font-semibold ${
+                                        country.average_risk_score >= 70 ? 'bg-red-600' :
+                                        country.average_risk_score >= 50 ? 'bg-orange-600' :
+                                        'bg-yellow-600'
+                                    } text-white">${country.attack_count}</span>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2 text-xs mt-2 pt-2 border-t border-gray-600">
+                                    <div class="text-gray-400">
+                                        高風險: <span class="text-red-400 font-semibold">${country.high_risk_count}</span>
+                                    </div>
+                                    <div class="text-gray-400">
+                                        獨立IP: <span class="text-blue-400 font-semibold">${country.unique_ip_count}</span>
+                                    </div>
+                                    <div class="text-gray-400 col-span-2">
+                                        平均風險: <span class="${
+                                            country.average_risk_score >= 70 ? 'text-red-400' :
+                                            country.average_risk_score >= 50 ? 'text-orange-400' :
+                                            'text-yellow-400'
+                                        } font-semibold">${country.average_risk_score}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+
+                    // 填充統計表格
+                    const tableContainer = document.getElementById('geoStatsTable');
+                    if (tableContainer && geoData.countries.length > 0) {
+                        tableContainer.innerHTML = `
+                            <table class="min-w-full">
+                                <thead>
+                                    <tr class="border-b border-gray-700">
+                                        <th class="text-left py-3 px-4 text-gray-300 font-semibold">#</th>
+                                        <th class="text-left py-3 px-4 text-gray-300 font-semibold">國家</th>
+                                        <th class="text-right py-3 px-4 text-gray-300 font-semibold">攻擊總數</th>
+                                        <th class="text-right py-3 px-4 text-gray-300 font-semibold">高風險</th>
+                                        <th class="text-right py-3 px-4 text-gray-300 font-semibold">平均風險</th>
+                                        <th class="text-right py-3 px-4 text-gray-300 font-semibold">獨立IP</th>
+                                        <th class="text-left py-3 px-4 text-gray-300 font-semibold">主要攻擊類型</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${geoData.countries.map((country, index) => {
+                                        const topAttacks = Object.entries(country.top_attack_types || {})
+                                            .sort((a, b) => b[1] - a[1])
+                                            .slice(0, 3)
+                                            .map(([type, count]) => `<span class="text-xs px-2 py-1 bg-gray-700 rounded mr-1">${type} (${count})</span>`)
+                                            .join('');
+
+                                        return `
+                                            <tr class="border-b border-gray-700 hover:bg-gray-750">
+                                                <td class="py-3 px-4 text-gray-400">${index + 1}</td>
+                                                <td class="py-3 px-4 text-white font-medium">${country.country_code} - ${country.country_name}</td>
+                                                <td class="py-3 px-4 text-right">
+                                                    <span class="text-white font-semibold">${country.attack_count}</span>
+                                                </td>
+                                                <td class="py-3 px-4 text-right">
+                                                    <span class="text-red-400">${country.high_risk_count}</span>
+                                                </td>
+                                                <td class="py-3 px-4 text-right">
+                                                    <span class="${
+                                                        country.average_risk_score >= 70 ? 'text-red-400' :
+                                                        country.average_risk_score >= 50 ? 'text-orange-400' :
+                                                        'text-yellow-400'
+                                                    } font-medium">${country.average_risk_score}</span>
+                                                </td>
+                                                <td class="py-3 px-4 text-right text-blue-400">${country.unique_ip_count}</td>
+                                                <td class="py-3 px-4">${topAttacks}</td>
+                                            </tr>
+                                        `;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        `;
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to load geo distribution:', error);
+                const listContainer = document.getElementById('geoCountryList');
+                if (listContainer) {
+                    listContainer.innerHTML = '<p class="text-red-400 text-sm">載入失敗</p>';
+                }
+                const tableContainer = document.getElementById('geoStatsTable');
+                if (tableContainer) {
+                    tableContainer.innerHTML = '<p class="text-red-400 text-sm">載入失敗</p>';
+                }
+            }
         },
 
         // 新增圖表渲染方法

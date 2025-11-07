@@ -456,5 +456,171 @@ window.Charts = {
                 }
             }
         });
+    },
+
+    // 繪製世界地圖 - 地理分布熱力圖
+    async renderWorldMap(canvasId, countriesData) {
+        this.destroyChart(canvasId);
+
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) {
+            console.error(`Canvas ${canvasId} not found`);
+            return;
+        }
+
+        // 如果沒有數據，顯示提示
+        if (!countriesData || countriesData.length === 0) {
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.font = '16px Arial';
+            ctx.fillStyle = '#666';
+            ctx.textAlign = 'center';
+            ctx.fillText('暫無地理位置數據', canvas.width / 2, canvas.height / 2);
+            return;
+        }
+
+        try {
+            // 加載地圖數據（TopoJSON 格式）
+            const response = await fetch('https://unpkg.com/world-atlas@2.0.2/countries-50m.json');
+            const worldData = await response.json();
+
+            // 將國家數據轉換為 Chart.js Geo 需要的格式
+            const features = ChartGeo.topojson.feature(worldData, worldData.objects.countries).features;
+
+            // 創建國家名稱到代碼的映射（用於匹配）
+            const countryNameMap = {
+                'United States': 'US',
+                'United States of America': 'US',
+                'China': 'CN',
+                'Russia': 'RU',
+                'Russian Federation': 'RU',
+                'Brazil': 'BR',
+                'India': 'IN',
+                'Germany': 'DE',
+                'United Kingdom': 'GB',
+                'France': 'FR',
+                'Japan': 'JP',
+                'South Korea': 'KR',
+                'Korea, Republic of': 'KR',
+                'Netherlands': 'NL',
+                'Canada': 'CA',
+                'Australia': 'AU',
+                'Singapore': 'SG',
+                'Ukraine': 'UA'
+            };
+
+            // 創建國家代碼到攻擊數據的映射
+            const dataMap = {};
+            countriesData.forEach(country => {
+                dataMap[country.country_code] = country.attack_count;
+            });
+
+            console.log('Country data map:', dataMap);
+
+            // 準備圖表數據 - 使用國家名稱匹配
+            const chartData = features.map(feature => {
+                const countryName = feature.properties.name;
+                const countryCode = countryNameMap[countryName];
+                const value = countryCode ? (dataMap[countryCode] || 0) : 0;
+
+                return {
+                    feature: feature,
+                    value: value
+                };
+            });
+
+            // 計算最大值用於顏色刻度
+            const maxValue = Math.max(...Object.values(dataMap), 1);
+            console.log('Max attack value:', maxValue);
+            console.log('Countries with data:', Object.keys(dataMap).length);
+
+            // 檢查匹配情況
+            const matchedCountries = chartData.filter(d => d.value > 0);
+            console.log('Matched countries on map:', matchedCountries.length);
+            console.log('Sample matched data:', matchedCountries.slice(0, 3).map(d => ({
+                name: d.feature.properties.name,
+                id: d.feature.id,
+                code: d.feature.properties.iso_a2,
+                value: d.value
+            })));
+            console.log('First 5 feature IDs:', features.slice(0, 5).map(f => ({ id: f.id, name: f.properties.name })));
+
+            // 創建顏色映射函數
+            const getColorForValue = (value) => {
+                if (value === 0) return 'rgba(200, 200, 200, 0.2)';
+
+                const ratio = value / maxValue;
+                if (ratio < 0.25) return `rgba(34, 197, 94, ${0.3 + ratio * 2})`;  // 綠色
+                if (ratio < 0.5) return `rgba(234, 179, 8, ${0.4 + ratio})`;       // 黃色
+                if (ratio < 0.75) return `rgba(249, 115, 22, ${0.5 + ratio})`;     // 橙色
+                return `rgba(220, 38, 38, ${0.6 + ratio * 0.4})`;                   // 紅色
+            };
+
+            new Chart(canvas, {
+                type: 'choropleth',
+                data: {
+                    labels: features.map(d => d.properties.name),
+                    datasets: [{
+                        label: '攻擊次數',
+                        data: chartData,
+                        backgroundColor: chartData.map(d => getColorForValue(d.value)),
+                        borderColor: '#374151',
+                        borderWidth: 0.5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    aspectRatio: 2,
+                    plugins: {
+                        title: {
+                            display: false
+                        },
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                title: function(context) {
+                                    return context[0].label;
+                                },
+                                label: function(context) {
+                                    const value = context.raw.value;
+                                    if (value === 0) return '攻擊次數: 0';
+
+                                    // 查找對應的國家數據以顯示更多信息
+                                    const countryCode = context.raw.feature.properties.iso_a2;
+                                    const countryData = countriesData.find(c => c.country_code === countryCode);
+
+                                    if (countryData) {
+                                        return [
+                                            `攻擊次數: ${countryData.attack_count}`,
+                                            `高風險攻擊: ${countryData.high_risk_count}`,
+                                            `平均風險分數: ${countryData.average_risk_score}`,
+                                            `獨立 IP: ${countryData.unique_ip_count}`
+                                        ];
+                                    }
+                                    return `攻擊次數: ${value}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        projection: {
+                            axis: 'x',
+                            projection: 'equalEarth'  // 使用等積地圖投影
+                        }
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('Error rendering world map:', error);
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.font = '16px Arial';
+            ctx.fillStyle = '#DC2626';
+            ctx.textAlign = 'center';
+            ctx.fillText('地圖加載失敗', canvas.width / 2, canvas.height / 2);
+        }
     }
 };
