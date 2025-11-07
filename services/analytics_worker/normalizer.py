@@ -11,6 +11,14 @@ import re
 
 logger = logging.getLogger(__name__)
 
+# 導入 GeoIP 助手
+try:
+    from geoip_helper import lookup_ip_location
+    GEOIP_AVAILABLE = True
+except ImportError:
+    logger.warning("GeoIP helper not available, location lookup will be disabled")
+    GEOIP_AVAILABLE = False
+
 
 def normalize_session(session: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -55,17 +63,37 @@ def normalize_session(session: Dict[str, Any]) -> Dict[str, Any]:
         normalized['attack_count'] = session.get('attack_count', {})
 
         # === 6. 地理位置資訊 ===
+        # 優先使用 GeoIP 查詢，如果失敗則使用 Tanner 提供的位置信息
         location = session.get('location', {})
-        if isinstance(location, dict):
+
+        # 嘗試使用 GeoIP 查詢
+        geoip_location = None
+        if GEOIP_AVAILABLE:
+            peer_ip = normalized.get('peer_ip', '')
+            if peer_ip and peer_ip != '0.0.0.0':
+                try:
+                    geoip_location = lookup_ip_location(peer_ip)
+                except Exception as e:
+                    logger.debug(f"GeoIP lookup failed for {peer_ip}: {e}")
+
+        # 如果 GeoIP 查詢成功且有數據，使用 GeoIP 結果
+        if geoip_location and (geoip_location.get('country') or geoip_location.get('city')):
+            normalized['location'] = geoip_location
+            logger.debug(f"Using GeoIP location for {peer_ip}: {geoip_location.get('country')}, {geoip_location.get('city')}")
+        # 否則使用 Tanner 提供的位置信息
+        elif isinstance(location, dict):
             normalized['location'] = {
                 'country': clean_string(location.get('country', '')),
                 'country_code': clean_string(location.get('country_code', '')).upper(),
                 'city': clean_string(location.get('city', '')),
                 'zip_code': clean_string(location.get('zip_code', '')),
                 'latitude': location.get('latitude'),
-                'longitude': location.get('longitude')
+                'longitude': location.get('longitude'),
+                'timezone': location.get('timezone', ''),
+                'accuracy_radius': location.get('accuracy_radius')
             }
         else:
+            # 兩者都沒有，使用空位置
             normalized['location'] = create_empty_location()
 
         # === 7. 會話統計 ===
@@ -222,7 +250,9 @@ def create_empty_location() -> Dict[str, Any]:
         'city': '',
         'zip_code': '',
         'latitude': None,
-        'longitude': None
+        'longitude': None,
+        'timezone': '',
+        'accuracy_radius': None
     }
 
 

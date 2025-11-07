@@ -38,9 +38,9 @@ services:
     networks:
      - snare_tanner_network
     image: tanner_redis_local
-    tmpfs:
-     - /data:uid=999,gid=999
-    read_only: true
+    volumes:
+     - tanner_redis_data:/data
+    command: redis-server --appendonly no --save "" --stop-writes-on-bgsave-error no
 
   tanner_phpox:
     build: ../honeypot_configs/snare_tanner/tanner/docker/phpox
@@ -136,6 +136,24 @@ services:
 
   # ==================== 數據處理服務 ====================
 
+  honeypot_agent:
+    build: ../honeypot_agent
+    container_name: honeypot_agent
+    restart: always
+    networks:
+      - snare_tanner_network
+      - analytics_network
+    environment:
+      - TANNER_API_URL=http://tanner_api:8092
+      - INGESTION_API_URL=http://ingestion_api:8000/ingest
+      - AGENT_RUN_INTERVAL_SECONDS=60
+      - INGESTION_API_KEY=test-honeypot-api-key-2025
+    volumes:
+      - honeypot_agent_data:/app/data
+    depends_on:
+      - tanner_api
+      - ingestion_api
+
   ingestion_api:
     build: ../services/ingestion_api
     container_name: ingestion_api
@@ -223,3 +241,5 @@ volumes:
   analytics_redis_data:
   analytics_data:
   tanner_data:
+  honeypot_agent_data:
+  tanner_redis_data:

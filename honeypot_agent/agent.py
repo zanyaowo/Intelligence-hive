@@ -51,9 +51,25 @@ class TannerAgent:
             for snare_id in snare_ids:
                 sessions_response = requests.get(f"{self.tanner_api_url}/snare/{snare_id}")
                 sessions_response.raise_for_status()
-                sessions = sessions_response.json().get("response", {}).get("message", [])
+                response_data = sessions_response.json().get("response", {})
+                sessions = response_data.get("message", [])
+
+                # Check if message is a string (error message) instead of a list
+                if isinstance(sessions, str):
+                    logging.warning(f"Skipping snare {snare_id}: {sessions}")
+                    continue
+
+                # Ensure sessions is a list
+                if not isinstance(sessions, list):
+                    logging.warning(f"Unexpected sessions type for snare {snare_id}: {type(sessions)}")
+                    continue
 
                 for session in sessions:
+                    # Ensure session is a dictionary
+                    if not isinstance(session, dict):
+                        logging.warning(f"Skipping non-dict session: {type(session)}")
+                        continue
+
                     fetch_count += 1
                     session["snare_id"] = snare_id
                     sess_uuid = session.get("sess_uuid")

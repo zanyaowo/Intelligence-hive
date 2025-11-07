@@ -1,6 +1,7 @@
 import json
 import time
 import uuid
+import yarl
 from urllib.parse import urlparse
 
 from tanner.config import TannerConfig
@@ -19,8 +20,11 @@ class Session:
             self.user_agent = data["headers"]["user-agent"]
             self.snare_uuid = data["uuid"]
 
+            # Normalize path to match how server.py normalizes it
+            normalized_path = yarl.URL(data["path"]).human_repr()
+
             path_entry = {
-                "path": data["path"],
+                "path": normalized_path,
                 "timestamp": time.time(),
                 "response_status": data["status"],
                 "method": data.get("method", "GET"),
@@ -56,8 +60,11 @@ class Session:
         self.timestamp = time.time()
         self.count += 1
 
+        # Normalize path to match how server.py normalizes it
+        normalized_path = yarl.URL(data["path"]).human_repr()
+
         path_entry = {
-            "path": data["path"],
+            "path": normalized_path,
             "timestamp": time.time(),
             "response_status": data["status"],
             "method": data.get("method", "GET"),

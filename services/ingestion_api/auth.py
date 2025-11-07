@@ -13,7 +13,7 @@ load_dotenv()
 
 # ============================  API key 驗證  ============================
 API_KEYS = os.getenv("API_KEYS", "").split(",")
-API_KEYS = [key.strip() for key in API_KEYS if key.strip]
+API_KEYS = [key.strip() for key in API_KEYS if key.strip()]
 api_key_header = APIKeyHeader(name="X-API-KEY", auto_error=False)
 
 async def verify_API_key(api_key: Optional[str] = Security(api_key_header)) -> str:
