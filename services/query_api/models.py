@@ -76,62 +76,64 @@ class SessionDetailResponse(BaseModel):
     peer_ip: str
     peer_port: int
     user_agent: str
-    snare_uuid: str
+    snare_uuid: Optional[str] = None
+    start_time: Optional[str] = Field(None, description="會話開始時間")
+    end_time: Optional[str] = Field(None, description="會話結束時間")
     processed_at: str
 
     # 攻擊資訊
     attack_types: List[str]
-    attack_count: Dict[str, int]
-    total_requests: int
-    unique_attack_types: int
-    has_malicious_activity: bool
+    attack_count: Optional[Dict[str, int]] = None
+    total_requests: Optional[int] = None
+    unique_attack_types: Optional[int] = None
+    has_malicious_activity: Optional[bool] = None
 
     # 請求詳情
-    paths: List[Dict[str, Any]]
+    paths: Optional[List[Dict[str, Any]]] = None
 
     # 地理位置
-    location: Dict[str, Any]
+    location: Optional[Dict[str, Any]] = None
 
     # 威脅情報
-    threat_intelligence: Dict[str, Any]
+    threat_intelligence: Optional[Dict[str, Any]] = None
 
     # 攻擊模式
-    attack_patterns: Dict[str, Any]
+    attack_patterns: Optional[Dict[str, Any]] = None
 
     # User Agent 分析
-    user_agent_info: Dict[str, Any]
+    user_agent_info: Optional[Dict[str, Any]] = None
 
     # 請求模式
-    request_patterns: Dict[str, Any]
+    request_patterns: Optional[Dict[str, Any]] = None
 
     # Payload 分析
-    payload_analysis: Dict[str, Any]
+    payload_analysis: Optional[Dict[str, Any]] = None
 
     # 時間模式
-    temporal_patterns: Dict[str, Any]
+    temporal_patterns: Optional[Dict[str, Any]] = None
 
     # 行為標籤
-    behavior_tags: List[str]
+    behavior_tags: Optional[List[str]] = None
 
     # 攻擊階段
-    attack_phases: List[str]
+    attack_phases: Optional[List[str]] = None
 
     # 風險評估
     risk_score: int
-    risk_breakdown: Dict[str, int]
+    risk_breakdown: Optional[Dict[str, int]] = None
     threat_level: str
-    priority: str
-    confidence_score: float
-    exploitation_likelihood: str
+    priority: Optional[str] = None
+    confidence_score: Optional[float] = None
+    exploitation_likelihood: Optional[str] = None
 
     # 影響評估
-    impact_assessment: Dict[str, Any]
+    impact_assessment: Optional[Dict[str, Any]] = None
 
     # 建議
-    recommendations: List[str]
+    recommendations: Optional[List[str]] = None
 
     # 標記
-    requires_review: bool
+    requires_review: Optional[bool] = None
     alert_level: str
 
 
@@ -264,10 +266,13 @@ class DashboardResponse(BaseModel):
     recent_alerts: List[AlertSummary] = Field(..., description="最近的高風險警報")
 
     # 威脅趨勢（最近24小時）
-    hourly_trend: List[Dict[str, Any]] = Field(..., description="每小時趨勢")
+    hourly_trend: Dict[str, int] = Field(..., description="每小時趨勢")
 
     # TOP 威脅
     top_threats: Dict[str, Any] = Field(..., description="TOP 威脅資訊")
+
+    # 攻擊分析
+    attack_analysis: Dict[str, Any] = Field(..., description="攻擊分析數據")
 
     class Config:
         json_schema_extra = {
@@ -277,14 +282,26 @@ class DashboardResponse(BaseModel):
                     "high_risk_count": 25,
                     "critical_alerts": 5,
                     "average_risk": 42.5,
-                    "unique_ips": 45
+                    "unique_ips": 45,
+                    "scanner_count": 80,
+                    "manual_count": 70,
+                    "avg_session_duration": 2.5
                 },
                 "recent_alerts": [],
-                "hourly_trend": [],
+                "hourly_trend": {},
                 "top_threats": {
                     "top_ips": {},
                     "top_attacks": {},
-                    "top_tools": {}
+                    "top_tools": {},
+                    "top_paths": {}
+                },
+                "attack_analysis": {
+                    "tool_distribution": {},
+                    "scanner_vs_manual": {
+                        "scanner": 80,
+                        "manual": 70
+                    },
+                    "method_distribution": {}
                 }
             }
         }

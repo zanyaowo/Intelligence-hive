@@ -1,98 +1,292 @@
-body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    line-height: 1.6;
-    margin: 0;
-    background-color: #f4f7f6;
-    color: #333;
+/* Custom Styles for Intelligence Hive */
+
+/* 平滑過渡 */
+* {
+    transition: all 0.2s ease;
 }
 
-header {
-    background-color: #2c3e50;
-    color: #ecf0f1;
-    padding: 1rem;
-    text-align: center;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+/* 滾動條樣式 */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
 }
 
-h1, h2, h3 {
-    margin-top: 0;
+::-webkit-scrollbar-track {
+    background: #1f2937;
 }
 
-main {
-    padding: 1rem;
+::-webkit-scrollbar-thumb {
+    background: #4b5563;
+    border-radius: 4px;
 }
 
-section {
-    background-color: #fff;
-    padding: 1.5rem;
-    margin-bottom: 1rem;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+::-webkit-scrollbar-thumb:hover {
+    background: #6b7280;
 }
 
-.grid-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1rem;
+/* Alpine.js 過渡動畫 */
+[x-cloak] {
+    display: none !important;
 }
 
-.card {
-    background-color: #ecf0f1;
-    padding: 1.5rem;
-    border-radius: 8px;
-    text-align: center;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+/* 表格懸停效果增強 */
+table tbody tr {
+    transition: background-color 0.15s ease;
 }
 
-.card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+/* 卡片懸停效果 */
+.card-hover {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.card h3 {
-    color: #2c3e50;
-    margin-bottom: 0.5rem;
+.card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
-.card p {
-    font-size: 2rem;
-    font-weight: bold;
-    color: #3498db;
-    margin: 0;
+/* Loading 動畫 */
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
 }
 
-#event-list {
-    list-style: none;
-    padding: 0;
+.animate-spin {
+    animation: spin 1s linear infinite;
 }
 
-#event-list li {
-    padding: 0.75rem;
-    border-bottom: 1px solid #eee;
-    transition: background-color 0.3s ease;
-}
-
-#event-list li:last-child {
-    border-bottom: none;
-}
-
-#event-list li:hover {
-    background-color: #f9f9f9;
-}
-
-footer {
-    text-align: center;
-    padding: 1rem;
-    margin-top: 1rem;
-    font-size: 0.9rem;
-    color: #777;
-}
-
+/* 淡入動畫 */
 @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
-.card, #recent-events {
-    animation: fadeIn 0.5s ease-in-out;
+.fade-in {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* 脈衝動畫（用於告警） */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.animate-pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* 威脅等級徽章發光效果 */
+.badge-critical {
+    box-shadow: 0 0 10px rgba(220, 38, 38, 0.5);
+}
+
+.badge-high {
+    box-shadow: 0 0 8px rgba(234, 88, 12, 0.4);
+}
+
+/* 圖表容器 */
+canvas {
+    max-height: 300px;
+}
+
+/* 響應式字體 */
+@media (max-width: 768px) {
+    h1 {
+        font-size: 1.5rem;
+    }
+
+    .text-3xl {
+        font-size: 1.875rem;
+    }
+
+    /* 在小螢幕上隱藏部分列 */
+    .hide-mobile {
+        display: none;
+    }
+}
+
+/* 工具提示樣式 */
+.tooltip {
+    position: relative;
+    display: inline-block;
+}
+
+.tooltip .tooltiptext {
+    visibility: hidden;
+    width: 200px;
+    background-color: #333;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 8px;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%;
+    left: 50%;
+    margin-left: -100px;
+    opacity: 0;
+    transition: opacity 0.3s;
+    font-size: 12px;
+}
+
+.tooltip:hover .tooltiptext {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* 程式碼區塊 */
+pre {
+    background-color: #1f2937;
+    border: 1px solid #374151;
+    border-radius: 4px;
+    padding: 12px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #e5e7eb;
+}
+
+code {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    background-color: #1f2937;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.9em;
+    color: #e5e7eb;
+}
+
+/* 空狀態樣式 */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #000000;
+}
+
+.empty-state svg {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 20px;
+    opacity: 0.3;
+}
+
+/* 按鈕禁用狀態 */
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* 選擇框增強 */
+select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+    background-position: right 0.5rem center;
+    background-repeat: no-repeat;
+    background-size: 1.5em 1.5em;
+    padding-right: 2.5rem;
+}
+
+/* 自定義複選框 */
+input[type="checkbox"] {
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border: 2px solid #4B5563;
+    border-radius: 4px;
+    cursor: pointer;
+    position: relative;
+    background-color: #374151;
+}
+
+input[type="checkbox"]:checked {
+    background-color: #3B82F6;
+    border-color: #3B82F6;
+}
+
+input[type="checkbox"]:checked::after {
+    content: '✓';
+    position: absolute;
+    color: white;
+    font-size: 14px;
+    top: -2px;
+    left: 2px;
+}
+
+/* 標籤頁切換動畫 */
+[x-show] {
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* 通知徽章 */
+.notification-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background-color: #EF4444;
+    color: white;
+    border-radius: 9999px;
+    padding: 2px 6px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+/* 進度條 */
+.progress-bar {
+    height: 4px;
+    background-color: #374151;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background-color: #3B82F6;
+    transition: width 0.3s ease;
+}
+
+/* 骨架屏動畫 */
+@keyframes shimmer {
+    0% {
+        background-position: -468px 0;
+    }
+    100% {
+        background-position: 468px 0;
+    }
+}
+
+.skeleton {
+    animation: shimmer 1.2s ease-in-out infinite;
+    background: linear-gradient(to right, #374151 0%, #4b5563 20%, #374151 40%, #374151 100%);
+    background-size: 800px 104px;
+    height: 20px;
+    border-radius: 4px;
+}
+
+/* 打印樣式 */
+@media print {
+    nav, footer, button {
+        display: none;
+    }
+
+    .no-print {
+        display: none;
+    }
+
+    body {
+        background: white;
+    }
+}
+
+/* 深色模式已啟用 */
+body {
+    background-color: #111827;
 }
