@@ -29,15 +29,15 @@ def init_geoip_reader():
     try:
         if os.path.exists(GEOIP_DB_PATH):
             _reader = geoip2.database.Reader(GEOIP_DB_PATH)
-            logger.info(f"✅ GeoIP database loaded from {GEOIP_DB_PATH}")
+            logger.info(f"GeoIP database loaded from {GEOIP_DB_PATH}")
         else:
-            logger.warning(f"⚠️  GeoIP database not found at {GEOIP_DB_PATH}")
+            logger.warning(f"  GeoIP database not found at {GEOIP_DB_PATH}")
             logger.warning("   Geographic location lookup will be disabled")
             logger.warning("   To enable GeoIP:")
             logger.warning("   1. Download GeoLite2-City.mmdb from https://dev.maxmind.com/geoip/geolite2-free-geolocation-data")
             logger.warning(f"   2. Place it at {GEOIP_DB_PATH}")
     except Exception as e:
-        logger.error(f"❌ Error loading GeoIP database: {e}")
+        logger.error(f"Error loading GeoIP database: {e}")
 
     return _reader
 
@@ -128,7 +128,6 @@ def is_private_ip(ip: str) -> bool:
 
 
 def close_geoip_reader():
-    """關閉 GeoIP 數據庫讀取器"""
     global _reader
     if _reader is not None:
         try:

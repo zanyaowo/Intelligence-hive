@@ -53,9 +53,10 @@ app = FastAPI(
 )
 
 # 配置 CORS（允許前端跨域請求）
+ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:8084").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 生產環境應該限制為特定域名
+    allow_origins=[origins.strip() for origins in ALLOWED_ORIGINS], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

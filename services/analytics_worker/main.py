@@ -3,6 +3,7 @@ import time
 import json
 import logging
 import redis
+from datetime import datetime
 from typing import List, Dict, Any, Tuple
 
 # 配置日誌
@@ -96,8 +97,8 @@ def process_batch(messages: List[Tuple[bytes, Dict[bytes, bytes]]]) -> int:
                 alert_level = evaluated_session.get('alert_level', 'INFO')
 
                 logging.info(
-                    f"✅ Processed {sess_uuid} | Risk: {risk_score}/100 | "
-                    f"Threat: {threat: {threat_level} | Alert: {alert_level}}"
+                    f"Processed {sess_uuid} | Risk: {risk_score}/100 | "
+                    f"Threat: threat: {threat_level} | Alert: {alert_level}"
                 )
 
                 processed += 1
