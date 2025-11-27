@@ -1,9 +1,3 @@
-"""
-資料讀取模組
-
-從檔案系統讀取已處理的蜜罐資料
-"""
-
 import json
 import os
 import logging
@@ -171,7 +165,7 @@ def get_session_by_uuid(uuid: str, max_days: int = 30) -> Optional[Dict[str, Any
             days_ago = (datetime.utcnow() - date_obj).days
             if days_ago < max_days:
                 continue  # 已經在快速路徑搜尋過了
-        except ValueError:
+        except ValueError as e:
             continue
 
         file_path = Path(DATA_DIR) / "processed" / date / "sessions.jsonl"
@@ -368,7 +362,8 @@ def get_dashboard_data(date: str = None) -> Dict[str, Any]:
                 hour = datetime.fromisoformat(processed_time.replace('Z', '+00:00')).hour
                 hour_label = f"{hour:02d}:00"
                 hourly_trend[hour_label] = hourly_trend.get(hour_label, 0) + 1
-            except:
+            except Exception as e:
+                logger.debug(f"Error parsing processed_at time: {e}")
                 pass
     # 確保所有小時都有數據（0-23）
     for h in range(24):
@@ -404,7 +399,7 @@ def get_dashboard_data(date: str = None) -> Dict[str, Any]:
                 end_dt = datetime.fromisoformat(end.replace('Z', '+00:00'))
                 duration = (end_dt - start_dt).total_seconds()
                 durations.append(duration)
-            except:
+            except Exception as e:
                 pass
 
     avg_duration = sum(durations) / len(durations) if durations else 0
@@ -554,7 +549,7 @@ def get_available_dates() -> List[str]:
                     # 驗證是否為日期格式
                     datetime.strptime(date_dir.name, "%Y-%m-%d")
                     dates.add(date_dir.name)
-                except ValueError:
+                except ValueError as e:
                     continue
 
     # 排序返回

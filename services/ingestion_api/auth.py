@@ -24,7 +24,7 @@ async def verify_API_key(api_key: Optional[str] = Security(api_key_header)) -> s
         )
     
     if api_key not in API_KEYS:
-                raise HTTPException(
+        raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="invalid API key"
     )
